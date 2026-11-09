@@ -53,7 +53,7 @@ ABOUT_DEFAULT = """Привет! Это мой творческий проект
 Спасибо, что поддерживаете мой творческий эксперимент! 🚀"""
 SHOP_DEFAULTS = {"name": "3DМяу", "tagline": "Милые вещи, напечатанные на 3D-принтере, и печать ваших идей на заказ",
                  "phone": "", "email": "", "telegram": "", "max": "", "max_link": "", "vk": "", "address": "", "delivery": list(DELIVERY),
-                 "min_order": 0, "about": ABOUT_DEFAULT,
+                 "min_order": 0, "about": ABOUT_DEFAULT, **{k: "" for k in ("page_terms", "page_privacy", "page_consent", "page_seller")},
                  # seller details (shown in the footer and on the legal pages; must be an adult seller)
                  "seller_name": "", "seller_status": "самозанятый (плательщик НПД)", "seller_inn": "",
                  "seller_ogrnip": "", "city": "", "make_days": "3–7 дней",
@@ -64,6 +64,7 @@ SHOP_DEFAULTS = {"name": "3DМяу", "tagline": "Милые вещи, напеч
                  "footer_text": FOOTER_DEFAULT, "meta_description": ("Котики, антистрессы, декор и подарки, напечатанные на 3D-принтере. Готовые изделия и печать "
                                      "по вашей идее, выбор цвета пластика."), "about_title": "Моя маленькая 3D-мастерская"}
 LONG_TEXT = {"pay_text", "delivery_text", "returns_text", "age_note", "about", "footer_text"}
+PAGE_TEXT = {"page_terms", "page_privacy", "page_consent", "page_seller"}  # footer pages rewritten by the admin (empty = standard text)
 CONSENT_TEXT = "Согласие на обработку персональных данных и согласие с условиями заказа получены"
 ALLOWED_EXT = {".jpg", ".jpeg", ".png", ".webp", ".gif", ".heic", ".bmp", ".stl", ".3mf", ".obj", ".step", ".stp",
                ".pdf", ".zip", ".txt"}

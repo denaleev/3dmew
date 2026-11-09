@@ -20,7 +20,7 @@ from .models import (ORDER_STATUSES, REQUEST_STATUSES, BlobSet, CustomRequest, F
                      ShopSetting, User)
 from .security import current_admin
 from .store import list_item_files
-from .shop import (DELIVERY, ORDER_LABELS, REQUEST_LABELS, SHOP_DEFAULTS, LONG_TEXT, add_event, calc_settings, clean, f,
+from .shop import (DELIVERY, ORDER_LABELS, REQUEST_LABELS, SHOP_DEFAULTS, LONG_TEXT, PAGE_TEXT, add_event, calc_settings, clean, f,
                    get_setting, jpeg, load_order, load_request, order_events, order_lines, order_out, product_out,
                    request_events, request_files, request_out, return_stock, shop_info, sold_counts, stamp, tile_from_card,
                    stats_since)
@@ -64,7 +64,7 @@ def save_settings(data: SettingsIn, db: Session = Depends(get_db), _: User = Dep
                 v = clean(str(v), 300)
                 cur[k] = v if v.startswith(("https://", "http://")) else ""
             elif k in SHOP_DEFAULTS:
-                cur[k] = clean(str(v), 8000 if k in LONG_TEXT else 300)
+                cur[k] = clean(str(v), 20000 if k in PAGE_TEXT else 8000 if k in LONG_TEXT else 300)
         put_setting(db, "shop", cur)
     db.commit()
     return get_settings(db, _)

@@ -286,7 +286,7 @@ async function boot(){
   if(S.info.address)f.push('📍 '+esc(S.info.address));
   $('foot').innerHTML='<b>'+esc(S.info.name)+'</b>'+f.map(x=>'<span>'+x+'</span>').join('')
     +(S.info.footer_text?'<div class="ftext">'+esc(S.info.footer_text)+'</div>':'')
-    +'<div class="flinks"><a href="#about">О проекте</a><a href="#contact">Обратная связь</a><a href="#palette">Палитра цветов</a><a href="#info/terms">Доставка, оплата и возврат</a><a href="#info/privacy">Политика конфиденциальности</a><a href="#info/consent">Согласие на обработку данных</a><a href="#info/seller">Продавец и реквизиты</a></div>'
+    +'<div class="flinks"><a href="#about">О проекте</a><a href="#contact">Обратная связь</a><a href="#info/terms">Доставка, оплата и возврат</a><a href="#info/privacy">Политика конфиденциальности</a><a href="#info/consent">Согласие на обработку данных</a><a href="#info/seller">Реквизиты</a></div>'
     +'<div class="seller">'+(S.info.seller_name?'Продавец: '+esc(sellerLine()):'')+(S.info.seller_name?'. ':'')+'Информация на сайте не является публичной офертой (п. 2 ст. 437 ГК РФ).</div>';
   try{const u=await api('/api/me');if(u&&u.id)S.user=u}catch(e){}
   updAcct();updCart();updFav();syncFav();
@@ -373,7 +373,6 @@ function route(){const h=location.hash.replace(/^#\/?/,''),[a,b,c]=h.split('/');
   if(a==='my')return myPage();
   if(a==='info')return infoPage(b);
   if(a==='about')return aboutPage();
-  if(a==='palette')return palettePage();
   if(a==='contact')return contactPage();
   if(a==='fav')return favPage();
   if(a==='account')return accountPage(b);
@@ -654,7 +653,7 @@ async function requestPage(id,token){const v=$('view'),fresh=location.hash.endsW
     remember('order',o.id,o.token);location.hash=`#order/${o.id}/${o.token}/new`}catch(e){$('qErr').textContent=e.message}}}
 
 
-/* ---------- about, palette, feedback ---------- */
+/* ---------- about, feedback ---------- */
 function richText(t){const out=[];let ul=null;for(const raw of String(t||'').split('\n')){const l=raw.trim();
     if(/^[-•]\s+/.test(l)){if(!ul){ul=[];out.push(ul)}ul.push(l.replace(/^[-•]\s+/,''))}else{ul=null;if(l)out.push(l)}}
   return out.map(x=>Array.isArray(x)?'<ul>'+x.map(i=>'<li>'+esc(i)+'</li>').join('')+'</ul>':'<p>'+esc(x)+'</p>').join('')}
@@ -668,10 +667,6 @@ function aboutPage(){const v=$('view'),i=S.info;
       <div style="display:flex;gap:8px"><button class="btn pri" id="abS">💾 Сохранить</button><button class="btn" id="abC">Отмена</button></div>`;
     $('abC').onclick=aboutPage;
     $('abS').onclick=async()=>{try{await api('/api/admin/settings',{method:'PUT',json:{shop:{about:$('abX').value,about_title:$('abT').value}}});S.info=await api('/api/shop/info');toast('Сохранено');aboutPage()}catch(e){toast(e.message)}}}}
-async function palettePage(){const v=$('view');v.innerHTML='<div class="empty">Загружаю…</div>';let cs=[];try{cs=await api('/api/shop/colors')}catch(e){}
-  v.innerHTML=`<div class="card"><h2>🎨 Палитра цветов</h2><p style="color:var(--muted);margin-top:0">Пластик, который есть в мастерской. На фото — сама катушка или пример печати, так видно настоящий оттенок и блеск.${isAdm()?' <a href="/admin#colors">Изменить палитру →</a>':''}</p>
-    ${cs.length?`<div class="pal">${cs.map(c=>`<div class="c"><div class="ph" style="${c.photo?`background-image:url('${esc(c.photo)}')`:swBg(c)}"><i style="${c.hex2?`background:linear-gradient(135deg,${esc(c.hex)} 0 50%,${esc(c.hex2)} 50% 100%)`:`background:${esc(c.hex)}`}"></i></div>
-      <div class="b"><b>${esc(c.name)}</b><small>${[c.material,c.note].filter(Boolean).map(esc).join(' · ')}</small></div></div>`).join('')}</div>`:'<div class="empty">Палитра пока пустая.</div>'}</div>`}
 function contactPage(){const v=$('view'),i=S.info,c=ls.get('shop_contact',{});const links=[];
   if(i.email)links.push('✉️ <a href="mailto:'+esc(i.email)+'">'+esc(i.email)+'</a>');if(i.telegram)links.push('✈️ Telegram '+esc(i.telegram));
   if(i.max)links.push('💬 MAX '+(/^https?:\/\//.test(i.max)?'<a href="'+esc(i.max)+'" target="_blank" rel="noopener">написать</a>':esc(i.max)));
@@ -697,14 +692,14 @@ const P=t=>'<p>'+esc(t).replace(/\n\n+/g,'</p><p>').replace(/\n/g,'<br>')+'</p>'
 function infoPage(kind){const v=$('view'),i=S.info,sel=i.seller_name?esc(sellerLine()):'<i>реквизиты продавца ещё не заполнены</i>',mail=contactsHtml();
   const delNames=(i.delivery||[]).map(d=>d.label).join(', ');
   const pages={
-  seller:`<h2>Продавец и реквизиты</h2>
+  seller:`<h2>Реквизиты</h2>
     <p><b>Продавец:</b> ${sel}</p>${i.city?`<p><b>Город:</b> ${esc(i.city)}</p>`:''}
     <p><b>Связаться с нами:</b> ${mail}</p>${i.address?`<p><b>Пункт самовывоза:</b> ${esc(i.address)}</p>`:''}
     <p class="mut">Информация о товарах на сайте не является публичной офертой (п. 2 ст. 437 ГК РФ). Условия продажи описаны на странице <a href="#info/terms">«Доставка, оплата и возврат»</a>.</p>`,
   terms:`<h2>Условия заказа, оплаты, доставки и возврата</h2>
     <h3>Как заключается договор</h3><p>Описания, фотографии и цены на сайте носят информационный характер и не являются публичной офертой (п. 2 ст. 437 ГК РФ). Оформленный на сайте заказ или заявка на печать — это предложение покупателя. Продавец связывается с покупателем, подтверждает наличие, цену, срок изготовления и стоимость доставки. Договор считается заключённым с момента такого подтверждения. Продавец вправе отказаться от заказа до подтверждения, например если изделие невозможно напечатать.</p>
     <h3>Изготовление</h3><p>Большинство изделий печатается после заказа. Обычный срок изготовления: ${esc(i.make_days||'3–7 дней')}, точный срок сообщаем при подтверждении. Изделия напечатаны на 3D-принтере, поэтому видимые слои, небольшие отличия оттенка и фактуры от фотографий являются особенностью технологии, а не браком.</p>
-    <h3>Оплата</h3>${i.pay_text?P(i.pay_text):`<p>Оплата производится при получении заказа, после того как продавец подтвердит заказ и срок изготовления. Онлайн-оплата на сайте пока недоступна. ${i.seller_status&&/самозанят|НПД/i.test(i.seller_status)?'Продавец применяет налог на профессиональный доход, чек из приложения «Мой налог» направляется покупателю на почту или в мессенджер.':'Покупателю выдаётся кассовый чек.'}</p>`}
+    <h3>Оплата</h3>${i.pay_text?P(i.pay_text):`<p>Оплата производится при получении заказа, после того как продавец подтвердит заказ и срок изготовления. Онлайн-оплата на сайте пока недоступна. ${i.seller_status&&/самозанят|НПД/i.test(i.seller_status)?'':'Покупателю выдаётся кассовый чек.'}</p>`}
     <h3>Доставка и получение</h3>${i.delivery_text?P(i.delivery_text):`<p>Доступные способы получения: ${esc(delNames||'самовывоз')}. Стоимость доставки рассчитывается по тарифам службы доставки и сообщается при подтверждении заказа. Риск случайной гибели товара переходит к покупателю с момента передачи изделия покупателю или службе доставки.</p>`}
     <h3>Возврат и обмен</h3>${i.returns_text?P(i.returns_text):`<p><b>Изделия из каталога</b> надлежащего качества можно вернуть в течение 7 дней после получения, если сохранены их товарный вид и потребительские свойства (п. 4 ст. 26.1 Закона «О защите прав потребителей»). Деньги возвращаются в течение 10 дней с момента получения требования, за вычетом расходов продавца на доставку возвращённого товара.</p>
       <p><b>Изделия, изготовленные по индивидуальному заказу</b> (по идее, рисунку или модели покупателя, а также с персональными изменениями размера, надписи или формы), имеют индивидуально-определённые свойства. Если они надлежащего качества, вернуть их нельзя.</p>
@@ -728,7 +723,29 @@ function infoPage(kind){const v=$('view'),i=S.info,sel=i.seller_name?esc(sellerL
     <p><b>Действия с данными:</b> сбор, запись, систематизация, накопление, хранение, уточнение, извлечение, использование, передача службе доставки для доставки заказа, блокирование, удаление, уничтожение, с использованием средств автоматизации и без них.</p>
     <p><b>Срок действия:</b> согласие действует до достижения целей обработки, но не более 3 лет после выполнения заказа, или до его отзыва. Я могу отозвать согласие, написав оператору: ${mail}.</p>
     <p class="mut">Подробнее — в <a href="#info/privacy">Политике конфиденциальности</a>.</p>`};
-  v.innerHTML=`<div class="card legal">${pages[kind]||pages.seller}<p style="margin-top:20px"><a href="#/">← В каталог</a></p></div>`}
+  kind=pages[kind]?kind:'seller';const std=pages[kind],title=(std.match(/<h2>(.*?)<\/h2>/)||[])[1]||'',own=(i['page_'+kind]||'').trim();
+  v.innerHTML=`<div class="card legal">${isAdm()?`<div style="float:right;display:flex;gap:6px;margin-left:10px"><button class="btn sm" id="pgEd">✏️ Редактировать</button></div>`:''}
+    <div id="pgBody">${own?'<h2>'+title+'</h2>'+mdText(own):std}</div><p style="margin-top:20px"><a href="#/">← В каталог</a></p></div>`;
+  if(!$('pgEd'))return;
+  $('pgEd').onclick=()=>{const tmp=document.createElement('div');tmp.innerHTML=std.replace(/<h2>.*?<\/h2>/,'');
+    $('pgBody').innerHTML=`<h2>✏️ ${title}</h2><p class="fine">Пустая строка — новый абзац. «## » в начале строки — подзаголовок, «- » — пункт списка, **так** — жирный. ${own?'':'Сейчас показан стандартный текст: он сам подставляет реквизиты из настроек. После сохранения текст станет постоянным, реквизиты в нём меняй вручную.'}</p>
+      <textarea id="pgX" rows="24" maxlength="20000" style="width:100%;font:inherit;font-size:14px;padding:10px;border:1.5px solid var(--line);border-radius:12px">${esc(own||htmlToMd(tmp))}</textarea>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><button class="btn pri" id="pgS">💾 Сохранить</button><button class="btn" id="pgC">Отмена</button>${own?'<button class="btn" id="pgR" style="margin-left:auto">↺ Вернуть стандартный текст</button>':''}</div>`;
+    const save=async t=>{try{await api('/api/admin/settings',{method:'PUT',json:{shop:{['page_'+kind]:t}}});S.info=await api('/api/shop/info');toast('Сохранено');infoPage(kind)}catch(e){toast(e.message)}};
+    $('pgC').onclick=()=>infoPage(kind);$('pgS').onclick=()=>save($('pgX').value);
+    if($('pgR'))$('pgR').onclick=()=>{if(confirm('Вернуть стандартный текст страницы? Твоя редакция удалится.'))save('')}}}
+// simple markup for the pages edited by the admin: "## " subheading, "- " list item, **bold**, blank line = new paragraph
+function mdText(t){const out=[];let ul=null,par=[];const inl=x=>esc(x).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>');
+  const flush=()=>{if(par.length){out.push('<p>'+par.map(inl).join('<br>')+'</p>');par=[]}};
+  for(const raw of String(t||'').split('\n')){const l=raw.trim();
+    if(/^##\s+/.test(l)){flush();ul=null;out.push('<h3>'+inl(l.replace(/^##\s+/,''))+'</h3>')}
+    else if(/^[-•]\s+/.test(l)){flush();if(!ul){ul=[];out.push(ul)}ul.push(inl(l.replace(/^[-•]\s+/,'')))}
+    else if(!l){flush();ul=null}else{ul=null;par.push(l)}}
+  flush();return out.map(x=>Array.isArray(x)?'<ul>'+x.map(i=>'<li>'+i+'</li>').join('')+'</ul>':x).join('')}
+function htmlToMd(root){const out=[];const txt=n=>{let s='';n.childNodes.forEach(c=>{if(c.nodeType===3)s+=c.textContent;else if(c.tagName==='B'||c.tagName==='STRONG')s+='**'+c.textContent+'**';else if(c.tagName==='BR')s+='\n';else s+=txt(c)});return s};
+  root.childNodes.forEach(n=>{if(n.nodeType!==1){const t=n.textContent.trim();if(t)out.push(t);return}
+    if(n.tagName==='H3')out.push('## '+txt(n).trim());else if(n.tagName==='UL')out.push([...n.querySelectorAll('li')].map(li=>'- '+txt(li).trim()).join('\n'));else out.push(txt(n).trim().replace(/[ \t]+/g,' '))});
+  return out.filter(Boolean).join('\n\n')}
 
 /* ---------- personal account ---------- */
 async function accountPage(sec){const v=$('view');if(!S.user){v.innerHTML='<div class="card" style="max-width:520px;margin:0 auto;text-align:center"><h2>Личный кабинет</h2><p>Войдите, чтобы видеть заказы с любого устройства, хранить избранное и не вводить контакты каждый раз.</p><button class="btn pri" id="lg">Войти или создать аккаунт</button></div>';$('lg').onclick=openAuth;return}
