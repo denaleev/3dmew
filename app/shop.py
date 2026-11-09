@@ -450,7 +450,8 @@ def product(pid: int, db: Session = Depends(get_db), user: User | None = Depends
         d, _ = color_delta(p, c, cs)
         cols.append(color_out(c) | {"delta": d, "price": max(float(p.price) + d, 1.0), "mark": mark})
     out = product_out(p, full=True, sold=sold_counts(db).get(p.id, 0)) | {
-        "media": media_out(p.id, media), "color_list": cols, "material": product_material(p)}
+        "media": media_out(p.id, media), "color_list": cols, "material": product_material(p),
+        "priced_colors": bool(p.grams)}  # weight known: the colour surcharge can be counted
     from .social import ratings
     out["rating"], out["reviews"] = ratings(db, [p.id]).get(p.id, (0, 0))
     if is_admin(user):

@@ -430,7 +430,7 @@ function drawGrid(g,list){
 
 const CMAX=4;  // the standard colour + 3 popular ones as buttons; the rest go to the drop-down list
 const dTxt=c=>c.delta>0?'+'+rub(c.delta):c.delta<0?'−'+rub(-c.delta):'±0 ₽';
-const dTag=(c,p)=>p.color_list.some(x=>x.delta)?`<small class="${c.delta>0?'up':c.delta<0?'dn':''}">${dTxt(c)}</small>`:'';
+const dTag=(c,p)=>p.priced_colors||p.color_list.some(x=>x.delta)?`<small class="${c.delta>0?'up':c.delta<0?'dn':''}">${dTxt(c)}</small>`:'';
 const plural=(n,a,b,c)=>{n=Math.abs(n)%100;const k=n%10;return n>10&&n<20?c:k===1?a:k>1&&k<5?b:c};
 async function openProduct(id){const box=$('pBox');$('pOv').classList.add('on');document.body.classList.add('ovopen');box.innerHTML='<div class="empty">Загружаю…</div>';
   let p;try{p=await api('/api/shop/products/'+id)}catch(e){box.innerHTML='<button class="x" data-close>✕</button><div class="empty">Товар не найден</div>';return}
@@ -444,11 +444,11 @@ async function openProduct(id){const box=$('pBox');$('pOv').classList.add('on');
       ${media.length>1?`<div class="ths">${media.map((m,i)=>`<button data-m="${i}" class="${m.kind==='video'?'vid':''}">${m.kind==='video'?(m.thumb?`<img src="${esc(m.thumb)}" alt="">`:'🎬'):`<img src="${esc(m.thumb||m.url)}" alt="">`}</button>`).join('')}</div>`:''}</div><div>
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;${isAdm()?'':'padding-right:48px'}">${p.category?`<span class="badge">${esc(p.category)}</span>`:''}${p.reviews?`<a href="#" id="toRev" style="text-decoration:none">${stars(p.rating,p.reviews)}</a>`:''}<span style="flex:1"></span><button class="btn sm favb ${isFav(p.id)?'on':''}" id="pFav">${isFav(p.id)?'♥ В избранном':'♡ В избранное'}</button></div><h2>${esc(p.title)}</h2>
     <div><span class="price" style="font-size:26px" id="pPrice">${p.color_list.some(c=>c.delta)?'от '+rub(Math.min(p.price,...p.color_list.map(c=>c.price))):rub(p.price)}</span>${p.old_price?`<span class="old">${rub(p.old_price)}</span>`:''}</div>
-    <div class="pdelta" id="pDelta"></div><div style="color:${p.stock>0?'var(--ok)':'var(--muted)'};font-weight:600;margin:6px 0 10px">${ready}</div>
+    <div class="pdelta" id="pDelta"></div>${isAdm()&&p.color_list.length&&!p.priced_colors?'<div class="pdelta" style="color:#b45309">⚠️ Админу: у товара не указан вес, поэтому доплата за цвет не считается. «✏️ Изменить» → «Вес изделия, г».</div>':''}<div style="color:${p.stock>0?'var(--ok)':'var(--muted)'};font-weight:600;margin:6px 0 10px">${ready}</div>
     <p style="white-space:pre-line">${esc(p.description)}</p>
     ${p.features.length?`<table class="feats">${p.features.map(f=>`<tr><td>${esc(f.k)}</td><td>${esc(f.v)}</td></tr>`).join('')}</table>`:''}
     ${p.color_list.length?`<div style="font-weight:800;font-size:13px;color:#5e4a5c;margin-bottom:2px">Цвет *</div><div class="pick" id="pPick">${p.color_list.slice(0,CMAX).map(c=>`<button class="pk" data-c="${c.id}" ${c.mark==='default'?'title="Стандартный цвет этой модели"':c.mark==='popular'?'title="Часто выбирают"':''}><i style="${swBg(c)}"></i>${esc(c.name)}${c.mark==='default'?'<small class="std">стандарт</small>':''}${dTag(c,p)}</button>`).join('')}
-      ${p.color_list.length>CMAX?`<select class="pkmore" id="pMore"><option value="">🎨 Ещё ${p.color_list.length-CMAX} ${plural(p.color_list.length-CMAX,'цвет','цвета','цветов')}…</option>${p.color_list.slice(CMAX).map(c=>`<option value="${c.id}">${esc(c.name)}${p.color_list.some(x=>x.delta)?' ('+dTxt(c)+')':''}</option>`).join('')}</select>`:''}${p.color_list.length>1?'<button class="pk multi" id="pMulti" type="button" title="Изделие в нескольких цветах: цену подтвердит мастер">🌈 Несколько цветов</button>':''}</div><div id="pCol"></div>`:''}
+      ${p.color_list.length>CMAX?`<select class="pkmore" id="pMore"><option value="">🎨 Ещё ${p.color_list.length-CMAX} ${plural(p.color_list.length-CMAX,'цвет','цвета','цветов')}…</option>${p.color_list.slice(CMAX).map(c=>`<option value="${c.id}">${esc(c.name)}${p.priced_colors||p.color_list.some(x=>x.delta)?' ('+dTxt(c)+')':''}</option>`).join('')}</select>`:''}${p.color_list.length>1?'<button class="pk multi" id="pMulti" type="button" title="Изделие в нескольких цветах: цену подтвердит мастер">🌈 Несколько цветов</button>':''}</div><div id="pCol"></div>`:''}
     <label class="f"><span>Пожелания${p.color_list.length?'':': цвет, надпись'} (необязательно)</span><input id="pNote" maxlength="300" placeholder="${p.color_list.length?'например: подарочная упаковка':'например: синий'}"></label>
     <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap" id="pBuy"><div class="qty"><button id="qm">−</button><input id="pq" value="1" inputmode="numeric"><button id="qp">+</button></div>
     <button class="btn pri big" style="flex:1" id="pAdd">🛒 В корзину</button></div><div id="pIn" class="hide"></div>
@@ -466,7 +466,7 @@ async function openProduct(id){const box=$('pBox');$('pOv').classList.add('on');
   const showPrice=()=>{const d=$('pDelta');if(!d)return;
     if(multi){const est=multi.length?Math.max(...multi.map(cp)):base;$('pPrice').textContent='≈ '+rub(est);
       d.innerHTML=`🌈 ${multi.length?multi.map(c=>esc(c.name)).join(' + '):'Отметь 2–4 цвета'}<br><b>Итоговую цену подтвердит мастер</b> после расчёта в слайсере: в нескольких цветах печать дольше и уходит больше пластика.`;return}
-    if(!col){d.innerHTML='';return}
+    if(!col||(!p.priced_colors&&!col.delta)){if(col)$('pPrice').textContent=rub(cp(col));d.innerHTML='';return}
     $('pPrice').textContent=rub(cp(col));
     d.innerHTML=`Базовая цена ${rub(base)} · ${esc(col.name)}: <b class="${col.delta>0?'up':col.delta<0?'dn':''}">${col.delta?dTxt(col)+(col.delta>0?' (пластик дороже)':' (пластик дешевле)'):'без доплаты'}</b>`};
   if($('pPick')){const pk=$('pPick');
