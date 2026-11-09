@@ -12,7 +12,7 @@
 *{box-sizing:border-box}html,body{margin:0}
 body{font:15px/1.5 Nunito,system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;background:var(--bg);color:var(--text)}
 a{color:var(--acc)}
-.btn.danger{background:#fff1f2;color:#be123c;border-color:#fecdd3}.am{position:relative}.amenu{position:absolute;right:0;top:calc(100% + 8px);min-width:240px;background:#fff;border:1px solid var(--line);border-radius:16px;box-shadow:0 14px 40px rgba(60,30,60,.16);padding:6px;z-index:30}
+.btn.danger{background:#fff1f2;color:#be123c;border-color:#fecdd3}.ci{width:1.15em;height:1.15em;vertical-align:-.2em;color:#fff;flex:none}.fab .ci{width:28px;height:28px}.am{position:relative}.amenu{position:absolute;right:0;top:calc(100% + 8px);min-width:240px;background:#fff;border:1px solid var(--line);border-radius:16px;box-shadow:0 14px 40px rgba(60,30,60,.16);padding:6px;z-index:30}
 .amenu .hd{padding:10px 12px 8px;border-bottom:1px solid var(--line);margin-bottom:4px}.amenu .hd b{display:block}.amenu .hd small{color:var(--muted)}
 .amenu a,.amenu button{display:flex;gap:10px;align-items:center;width:100%;padding:9px 12px;border:0;background:none;border-radius:10px;font:inherit;font-weight:600;color:var(--text);text-decoration:none;cursor:pointer;text-align:left}
 .amenu a:hover,.amenu button:hover{background:#fbf1e7}.amenu .cnt2{margin-left:auto;color:var(--muted);font-weight:700;font-size:13px}.amenu .out{color:#be123c;border-top:1px solid var(--line);border-radius:0 0 10px 10px;margin-top:4px}
@@ -226,14 +226,14 @@ footer .ftext{flex-basis:100%;font-size:13px;line-height:1.55;max-width:900px}
   <a class="btn sm ghost" href="#my">📦 <span class="lbl">Мои заказы</span></a>
   <a class="btn sm ghost hide" id="admLink" href="/admin">📋 <span class="lbl">Админка</span></a>
   <div class="am"><button class="btn sm" id="acct" aria-haspopup="true">👤 <span class="lbl">Войти</span></button><div class="amenu hide" id="acctMenu" role="menu"></div></div>
-  <button class="btn sm pri cartb" id="cartBtn">🛒 <span class="lbl">Корзина</span><b id="cartN"></b></button>
+  <button class="btn sm pri cartb" id="cartBtn"><svg class="ci" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2.2l2.1 10.2a1.6 1.6 0 0 0 1.6 1.3h8.3a1.6 1.6 0 0 0 1.5-1.2L20.5 8H6.3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9.5" cy="19.5" r="1.6" fill="currentColor"/><circle cx="17" cy="19.5" r="1.6" fill="currentColor"/></svg> <span class="lbl">Корзина</span><b id="cartN"></b></button>
 </div></header>
 
 <main id="view"></main>
 
 <footer id="foot"></footer>
 
-<button class="fab" id="cartFab" aria-label="Корзина">🛒<b id="cartN2"></b></button>
+<button class="fab" id="cartFab" aria-label="Корзина"><svg class="ci" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2.2l2.1 10.2a1.6 1.6 0 0 0 1.6 1.3h8.3a1.6 1.6 0 0 0 1.5-1.2L20.5 8H6.3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9.5" cy="19.5" r="1.6" fill="currentColor"/><circle cx="17" cy="19.5" r="1.6" fill="currentColor"/></svg><b id="cartN2"></b></button>
 <div class="shade" id="shade"></div>
 <aside class="drawer" id="cart" aria-label="Корзина">
   <div class="hd"><h3>🛒 Корзина</h3><button class="x" style="position:static" id="cartClose">✕</button></div>
@@ -347,7 +347,8 @@ const ckey=c=>c?(c.ids?'m'+c.ids.join(','):String(c.id||0)):'0',lkey=l=>l.colors
 const lineOf=(id,c,note)=>S.cart.find(l=>l.id===id&&lkey(l)===ckey(c)&&(note==null||(l.note||'')===note));
 const lastLine=id=>{for(let i=S.cart.length-1;i>=0;i--)if(S.cart[i].id===id)return S.cart[i];return null};
 function stepLine(l,d){l.qty=Math.min(999,l.qty+d);if(l.qty<1)S.cart.splice(S.cart.indexOf(l),1);saveCart()}
-const stepHtml=(l,big)=>`<div class="stp ${big?'pstp':''}"><div class="qty"><button data-dec="1" aria-label="Меньше">−</button><b>${l.qty}</b><button data-inc="1" aria-label="Больше">+</button></div><button class="go" data-tocart="1" title="Открыть корзину" aria-label="Открыть корзину">🛒${big?' В корзине':''}</button></div>`;
+const CARTSVG='<svg class="ci" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2.2l2.1 10.2a1.6 1.6 0 0 0 1.6 1.3h8.3a1.6 1.6 0 0 0 1.5-1.2L20.5 8H6.3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9.5" cy="19.5" r="1.6" fill="currentColor"/><circle cx="17" cy="19.5" r="1.6" fill="currentColor"/></svg>';
+const stepHtml=(l,big)=>`<div class="stp ${big?'pstp':''}"><div class="qty"><button data-dec="1" aria-label="Меньше">−</button><b>${l.qty}</b><button data-inc="1" aria-label="Больше">+</button></div><button class="go" data-tocart="1" title="Открыть корзину" aria-label="Открыть корзину">${CARTSVG}${big?' В корзине':''}</button></div>`;
 function buyHtml(p){const l=lastLine(p.id);return l?stepHtml(l):`<button class="btn sm pri" data-add="${p.id}">В корзину</button>`}
 function updBuy(){document.querySelectorAll('[data-buy]').forEach(b=>{const p=(S.tiles||{})[b.dataset.buy];if(p)b.innerHTML=buyHtml(p)});if(S.updPBuy)S.updPBuy()}
 async function quickAdd(p){let c=null;  // a tile has no colour picker: the standard colour (or the first one offered)
@@ -469,7 +470,7 @@ async function openProduct(id){const box=$('pBox');$('pOv').classList.add('on');
       ${p.color_list.length>CMAX?`<select class="pkmore" id="pMore"><option value="">🎨 Ещё ${p.color_list.length-CMAX} ${plural(p.color_list.length-CMAX,'цвет','цвета','цветов')}…</option>${p.color_list.slice(CMAX).map(c=>`<option value="${c.id}">${esc(c.name)}${p.priced_colors||p.color_list.some(x=>x.delta)?' ('+dTxt(c)+')':''}</option>`).join('')}</select>`:''}${p.color_list.length>1?'<button class="pk multi" id="pMulti" type="button" title="Изделие в нескольких цветах: цену подтвердит мастер">🌈 Несколько цветов</button>':''}</div><div id="pCol"></div>`:''}
     <label class="f"><span>Пожелания${p.color_list.length?'':': цвет, надпись'} (необязательно)</span><input id="pNote" maxlength="300" placeholder="${p.color_list.length?'например: подарочная упаковка':'например: синий'}"></label>
     <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap" id="pBuy"><div class="qty"><button id="qm">−</button><input id="pq" value="1" inputmode="numeric"><button id="qp">+</button></div>
-    <button class="btn pri big" style="flex:1" id="pAdd">🛒 В корзину</button></div><div id="pIn" class="hide"></div>
+    <button class="btn pri big" style="flex:1" id="pAdd"><svg class="ci" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2.2l2.1 10.2a1.6 1.6 0 0 0 1.6 1.3h8.3a1.6 1.6 0 0 0 1.5-1.2L20.5 8H6.3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9.5" cy="19.5" r="1.6" fill="currentColor"/><circle cx="17" cy="19.5" r="1.6" fill="currentColor"/></svg> В корзину</button></div><div id="pIn" class="hide"></div>
     ${S.info.age_note?`<p class="fine" style="margin-top:12px">⚠️ ${esc(S.info.age_note)}</p>`:''}</div></div>
     <div class="revs" id="revs"><div class="empty">Загружаю отзывы…</div></div>`;
   $('pFav').onclick=()=>{toggleFav(p.id);const b=$('pFav');b.classList.toggle('on',isFav(p.id));b.textContent=isFav(p.id)?'♥ В избранном':'♡ В избранное'};
