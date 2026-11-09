@@ -17,6 +17,11 @@ class User(Base):
     password_hash: Mapped[Optional[str]] = mapped_column(String(255))  # argon2id, never the password itself
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    # personal account: filled in at checkout for the next orders
+    phone: Mapped[str] = mapped_column(String(60), default="", server_default="")
+    email: Mapped[str] = mapped_column(String(160), default="", server_default="")
+    address: Mapped[str] = mapped_column(String(1000), default="", server_default="")
+    delivery: Mapped[str] = mapped_column(String(40), default="", server_default="")
 
 
 class OAuthAccount(Base):

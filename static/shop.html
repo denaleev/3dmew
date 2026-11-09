@@ -12,6 +12,13 @@
 *{box-sizing:border-box}html,body{margin:0}
 body{font:15px/1.5 Nunito,system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;background:var(--bg);color:var(--text)}
 a{color:var(--acc)}
+.btn.danger{background:#fff1f2;color:#be123c;border-color:#fecdd3}.am{position:relative}.amenu{position:absolute;right:0;top:calc(100% + 8px);min-width:240px;background:#fff;border:1px solid var(--line);border-radius:16px;box-shadow:0 14px 40px rgba(60,30,60,.16);padding:6px;z-index:30}
+.amenu .hd{padding:10px 12px 8px;border-bottom:1px solid var(--line);margin-bottom:4px}.amenu .hd b{display:block}.amenu .hd small{color:var(--muted)}
+.amenu a,.amenu button{display:flex;gap:10px;align-items:center;width:100%;padding:9px 12px;border:0;background:none;border-radius:10px;font:inherit;font-weight:600;color:var(--text);text-decoration:none;cursor:pointer;text-align:left}
+.amenu a:hover,.amenu button:hover{background:#fbf1e7}.amenu .cnt2{margin-left:auto;color:var(--muted);font-weight:700;font-size:13px}.amenu .out{color:#be123c;border-top:1px solid var(--line);border-radius:0 0 10px 10px;margin-top:4px}
+.acc{max-width:860px;margin:0 auto;display:grid;gap:16px}.acc .top{display:flex;gap:16px;align-items:center;flex-wrap:wrap}.acc .ava{width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#f59331,#c026d3);color:#fff;display:grid;place-items:center;font-size:28px;font-weight:800;flex:none}
+.acc .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-top:14px}.acc .stats a{background:#fff7ef;border-radius:14px;padding:10px 12px;text-decoration:none;color:var(--text)}.acc .stats b{display:block;font-size:22px}
+.acc .stats small{color:var(--muted);font-weight:600}.acc h3{margin:0 0 10px}.acc .ok{color:var(--ok);font-weight:700;font-size:14px}
 header{position:sticky;top:0;z-index:20;background:rgba(255,255,255,.94);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
 .hw{max-width:1240px;margin:0 auto;display:flex;align-items:center;gap:10px;padding:10px 16px}
 .logo{width:36px;height:36px;border-radius:11px;background:linear-gradient(135deg,var(--acc2),var(--acc));display:grid;place-items:center;color:#fff;font-weight:800;font-size:14px;flex:none}
@@ -218,7 +225,7 @@ footer .ftext{flex-basis:100%;font-size:13px;line-height:1.55;max-width:900px}
   <a class="btn sm ghost" href="#fav" id="favLink">♡ <span class="lbl">Избранное</span><b id="favN" class="cnt"></b></a>
   <a class="btn sm ghost" href="#my">📦 <span class="lbl">Мои заказы</span></a>
   <a class="btn sm ghost hide" id="admLink" href="/admin">📋 <span class="lbl">Админка</span></a>
-  <button class="btn sm" id="acct">👤 <span class="lbl">Войти</span></button>
+  <div class="am"><button class="btn sm" id="acct" aria-haspopup="true">👤 <span class="lbl">Войти</span></button><div class="amenu hide" id="acctMenu" role="menu"></div></div>
   <button class="btn sm pri cartb" id="cartBtn">🛒 <span class="lbl">Корзина</span><b id="cartN"></b></button>
 </div></header>
 
@@ -286,7 +293,17 @@ async function boot(){
   if(/[?&]login=/.test(location.search)){if(/login=fail/.test(location.search))toast('Не получилось войти через соцсеть');history.replaceState(null,'',location.pathname+location.hash)}
   route()}
 function updAcct(){$('acct').innerHTML='👤 <span class="lbl">'+(S.user?esc(S.user.name):'Войти')+'</span>';$('admLink').classList.toggle('hide',!(S.user&&S.user.admin))}
-$('acct').onclick=()=>{if(S.user){if(confirm('Выйти из аккаунта «'+S.user.name+'»?')){api('/api/auth/logout',{method:'POST'}).catch(()=>{});S.user=null;updAcct();route()}}else openAuth()};
+function logout(){api('/api/auth/logout',{method:'POST'}).catch(()=>{});S.user=null;S.acct=null;updAcct();toast('Вы вышли из аккаунта');location.hash='#/';route()}
+function acctMenu(open){const m=$('acctMenu');if(!open){m.classList.add('hide');return}
+  const n=S.cart.reduce((a,l)=>a+l.qty,0);
+  m.innerHTML=`<div class="hd"><b>${esc(S.user.name)}</b><small>${S.user.admin?'администратор':'личный кабинет'}</small></div>
+    <a href="#account" role="menuitem">👤 Личный кабинет</a><a href="#my" role="menuitem">📦 Мои заказы и заявки</a>
+    <a href="#fav" role="menuitem">♥ Избранное<span class="cnt2">${S.fav.length||''}</span></a><a href="#" data-cart role="menuitem">🛒 Корзина<span class="cnt2">${n||''}</span></a>
+    <a href="#account/settings" role="menuitem">⚙️ Настройки и безопасность</a>${S.user.admin?'<a href="/admin" role="menuitem">📋 Управление магазином</a>':''}
+    <button class="out" data-out role="menuitem">🚪 Выйти</button>`;m.classList.remove('hide')}
+$('acct').onclick=e=>{e.stopPropagation();if(!S.user)return openAuth();acctMenu($('acctMenu').classList.contains('hide'))};
+$('acctMenu').onclick=e=>{if(e.target.closest('[data-out]'))logout();else if(e.target.closest('[data-cart]')){e.preventDefault();openCart()}acctMenu(false)};
+document.addEventListener('click',e=>{if(!e.target.closest('.am'))acctMenu(false)});
 let am='in';
 function setAm(m){am=m;document.querySelectorAll('[data-am]').forEach(b=>b.classList.toggle('pri',b.dataset.am===m));$('authT').textContent=m==='in'?'Вход':'Новый аккаунт';$('aGo').textContent=m==='in'?'Войти':'Создать аккаунт'}
 document.querySelectorAll('[data-am]').forEach(b=>b.onclick=()=>setAm(b.dataset.am));
@@ -358,6 +375,7 @@ function route(){const h=location.hash.replace(/^#\/?/,''),[a,b,c]=h.split('/');
   if(a==='palette')return palettePage();
   if(a==='contact')return contactPage();
   if(a==='fav')return favPage();
+  if(a==='account')return accountPage(b);
   catalog()}
 
 /* ---------- catalogue ---------- */
@@ -529,23 +547,24 @@ $('pOv').onclick=e=>{if(e.target===$('pOv')||e.target.closest('[data-close]'))cl
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeProduct();closeCart();$('authOv').classList.remove('on')}});
 
 /* ---------- checkout ---------- */
-function contactFields(){const c=ls.get('shop_contact',{});const u=S.user;
+function contactFields(keep){const a=S.user&&S.acct||{},c=Object.assign({},ls.get('shop_contact',{}));['name','phone','email'].forEach(k=>{if(a[k])c[k]=a[k]});const u=S.user;
   return `<div class="row"><label class="f"><span>Как к вам обращаться *</span><input id="cName" maxlength="160" value="${esc(c.name||(u?u.name:''))}" autocomplete="name"></label>
   <label class="f"><span>Телефон</span><input id="cPhone" maxlength="60" value="${esc(c.phone||'')}" autocomplete="tel" inputmode="tel" placeholder="+7…"></label></div>
-  <label class="f"><span>Почта</span><input id="cEmail" maxlength="160" value="${esc(c.email||'')}" autocomplete="email" inputmode="email" placeholder="нужен телефон или почта"></label>`}
+  <label class="f"><span>Почта</span><input id="cEmail" maxlength="160" value="${esc(c.email||'')}" autocomplete="email" inputmode="email" placeholder="нужен телефон или почта"></label>
+  ${u&&keep?'<label class="agree" style="margin-top:-4px"><input type="checkbox" id="cKeep" checked><span>Запомнить контакты и адрес в <a href="#account" target="_blank">личном кабинете</a></span></label>':''}`}
 function readContact(){const c={name:$('cName').value.trim(),phone:$('cPhone').value.trim(),email:$('cEmail').value.trim()};ls.set('shop_contact',c);return c}
 function agreeBoxes(){return `<label class="agree"><input type="checkbox" id="agPd"><span>Даю <a href="#info/consent" target="_blank">согласие на обработку моих персональных данных</a> в соответствии с <a href="#info/privacy" target="_blank">Политикой конфиденциальности</a></span></label>
   <label class="agree"><input type="checkbox" id="agTerms"><span>Принимаю <a href="#info/terms" target="_blank">условия заказа, оплаты, доставки и возврата</a></span></label>`}
 function agreeCheck(){if(!$('agPd').checked)return 'Отметьте согласие на обработку персональных данных';if(!$('agTerms').checked)return 'Отметьте согласие с условиями заказа';return ''}
 function remember(kind,id,token){const m=ls.get('shop_mine',[]);m.unshift({kind,id,token,t:Date.now()});ls.set('shop_mine',m.slice(0,100))}
-function checkout(){const v=$('view');
+async function checkout(){const v=$('view');if(S.user&&!S.acct)try{S.acct=await api('/api/account')}catch(e){}
   if(!S.cart.length){v.innerHTML='<div class="empty">Корзина пуста. <a href="#/">В каталог →</a></div>';return}
   const del=S.info.delivery||[{id:'pickup',label:'Самовывоз'}];
   v.innerHTML=`<div class="card" style="max-width:760px;margin:0 auto"><h2>Оформление заказа</h2>
     <div style="margin:10px 0 16px">${S.cart.map(l=>`<div style="display:flex;justify-content:space-between;gap:10px;padding:4px 0"><span>${esc(l.title)}${l.colorName?' <span style="color:var(--muted)">'+(l.pending?'🌈 ':'🎨 ')+esc(l.colorName)+'</span>':''}${l.note?' <span style="color:var(--muted)">('+esc(l.note)+')</span>':''} × ${l.qty}</span><b>${rub(l.price*l.qty)}</b></div>`).join('')}
     <div class="tot" style="margin-top:8px;border-top:1px solid var(--line);padding-top:8px"><span>Итого</span><span>${S.cart.some(l=>l.pending)?'≈ ':''}${rub(S.cart.reduce((a,l)=>a+l.price*l.qty,0))}</span></div>
     ${S.cart.some(l=>l.pending)?'<div class="fine" style="margin-top:6px;color:#b45309">🌈 В заказе есть изделия в нескольких цветах. Их цену мастер подтвердит после расчёта в слайсере, итог появится на странице заказа.</div>':''}</div>
-    ${contactFields()}<div style="font-weight:700;font-size:13px;color:#5e4a5c;margin-bottom:6px">Получение</div>
+    ${contactFields(1)}<div style="font-weight:700;font-size:13px;color:#5e4a5c;margin-bottom:6px">Получение</div>
     <div class="seg">${del.map((d,i)=>`<label><input type="radio" name="dl" value="${d.id}" ${i?'':'checked'}>${esc(d.label)}</label>`).join('')}</div>
     <label class="f" id="addrBox"><span>Адрес доставки</span><textarea id="cAddr" rows="2" maxlength="1000"></textarea></label>
     ${S.info.address?`<div id="pickInfo" style="color:var(--muted);font-size:14px;margin:-4px 0 12px">📍 Самовывоз: ${esc(S.info.address)}</div>`:''}
@@ -557,12 +576,14 @@ function checkout(){const v=$('view');
     ${agreeBoxes()}<div class="err" id="cErr"></div><button class="btn pri big" style="width:100%" id="cGo">Отправить заказ</button>
     <div class="fine" style="margin-top:10px">Заказ на сайте — это заявка, а не оплата. Продавец свяжется с вами, подтвердит наличие, цену, срок изготовления и стоимость доставки. Договор считается заключённым после этого подтверждения. Оплата при получении.</div></div>`;
   const upd=()=>{const d=(document.querySelector('[name=dl]:checked')||{}).value;$('addrBox').classList.toggle('hide',d==='pickup');if($('pickInfo'))$('pickInfo').classList.toggle('hide',d!=='pickup')};
+  const ac=S.user&&S.acct;if(ac){if(ac.address)$('cAddr').value=ac.address;const r=ac.delivery&&document.querySelector(`[name=dl][value="${ac.delivery}"]`);if(r)r.checked=true}
   document.querySelectorAll('[name=dl]').forEach(r=>r.onchange=upd);upd();
   $('cGo').onclick=async()=>{const c=readContact();if(!c.name)return $('cErr').textContent='Напиши, как к тебе обращаться';
     if(!c.phone&&!c.email)return $('cErr').textContent='Нужен телефон или почта';
     const ag=agreeCheck();if(ag)return $('cErr').textContent=ag;
     $('cGo').disabled=true;try{const r=await api('/api/shop/orders',{method:'POST',json:{...c,delivery:document.querySelector('[name=dl]:checked').value,address:$('cAddr').value,comment:$('cCom').value,consent:true,terms:true,payment:'on_delivery',
         items:S.cart.map(l=>({product_id:l.id,qty:l.qty,note:l.note,color:l.color||0,colors:l.colors||[]}))}});
+      if($('cKeep')&&$('cKeep').checked)try{S.acct=await api('/api/account',{method:'PATCH',json:{phone:c.phone,email:c.email,address:$('cAddr').value,delivery:document.querySelector('[name=dl]:checked').value}})}catch(e){}
       remember('order',r.id,r.token);S.cart=[];saveCart();location.hash=`#order/${r.id}/${r.token}/new`}
     catch(e){$('cErr').textContent=e.message;$('cGo').disabled=false}}}
 
@@ -743,7 +764,7 @@ function infoPage(kind){const v=$('view'),i=S.info,sel=i.seller_name?esc(sellerL
     <p class="mut">Продавец: ${sel}. Связь: ${mail}.</p>`,
   privacy:`<h2>Политика конфиденциальности</h2><p class="mut">Редакция от ${esc(i.policy_date||'')}</p>
     <h3>1. Кто обрабатывает данные</h3><p>Оператор персональных данных: ${sel}${i.city?', '+esc(i.city):''} (далее — оператор). Связь с оператором: ${mail}.</p>
-    <h3>2. Какие данные мы получаем</h3><ul><li>имя или как к вам обращаться, телефон, электронная почта;</li><li>адрес доставки, комментарии к заказу, описание заявки и файлы, которые вы присылаете;</li><li>для личного кабинета: логин и зашифрованный пароль, либо данные профиля соцсети, через которую вы вошли;</li><li>отзывы: имя, оценка, текст и фото, которые вы публикуете с вашего согласия;</li><li>технические данные: IP-адрес, время запроса, cookie для входа в кабинет.</li></ul>
+    <h3>2. Какие данные мы получаем</h3><ul><li>имя или как к вам обращаться, телефон, электронная почта;</li><li>адрес доставки, комментарии к заказу, описание заявки и файлы, которые вы присылаете;</li><li>для личного кабинета: логин и зашифрованный пароль, либо данные профиля соцсети, через которую вы вошли; контакты и адрес, если вы сохранили их в кабинете (изменить или удалить их, как и сам аккаунт, можно в разделе «Личный кабинет»);</li><li>отзывы: имя, оценка, текст и фото, которые вы публикуете с вашего согласия;</li><li>технические данные: IP-адрес, время запроса, cookie для входа в кабинет.</li></ul>
     <h3>3. Зачем</h3><ul><li>принять, подтвердить, изготовить и передать заказ;</li><li>связаться с вами по заказу или заявке;</li><li>передать заказ службе доставки, если вы выбрали доставку;</li><li>выполнить требования закона (налоги, чеки, бухгалтерский учёт);</li><li>защитить сайт от злоупотреблений.</li></ul><p>Мы не продаём данные, не передаём их для рекламы и не делаем рассылок без вашего отдельного согласия.</p>
     <h3>4. Основания</h3><p>Ваше согласие (п. 1 ч. 1 ст. 6 Федерального закона № 152-ФЗ «О персональных данных») и исполнение договора, стороной которого вы являетесь (п. 5 ч. 1 ст. 6).</p>
     <h3>5. Что мы делаем с данными</h3><p>Сбор, запись, систематизация, хранение, уточнение, использование, передача службе доставки (только имя, телефон и адрес для доставки), обезличивание, блокирование, удаление и уничтожение. Обработка ведётся с использованием средств автоматизации. Данные хранятся на сервере, расположенном на территории Российской Федерации.</p>
@@ -759,6 +780,42 @@ function infoPage(kind){const v=$('view'),i=S.info,sel=i.seller_name?esc(sellerL
     <p class="mut">Подробнее — в <a href="#info/privacy">Политике конфиденциальности</a>.</p>`};
   v.innerHTML=`<div class="card legal">${pages[kind]||pages.seller}<p style="margin-top:20px"><a href="#/">← В каталог</a></p></div>`}
 
+/* ---------- personal account ---------- */
+async function accountPage(sec){const v=$('view');if(!S.user){v.innerHTML='<div class="card" style="max-width:520px;margin:0 auto;text-align:center"><h2>Личный кабинет</h2><p>Войдите, чтобы видеть заказы с любого устройства, хранить избранное и не вводить контакты каждый раз.</p><button class="btn pri" id="lg">Войти или создать аккаунт</button></div>';$('lg').onclick=openAuth;return}
+  v.innerHTML='<div class="empty">Загружаю…</div>';let a;try{a=S.acct=await api('/api/account')}catch(e){v.innerHTML='<div class="empty">'+esc(e.message)+'</div>';return}
+  const del=S.info.delivery||[];
+  v.innerHTML=`<div class="acc">
+   <div class="card"><div class="top"><div class="ava" id="acAva">${esc((a.name||'?').trim().charAt(0).toUpperCase())}</div><div style="flex:1;min-width:200px"><h2 style="margin:0" id="acName">${esc(a.name)}</h2>
+     <div style="color:var(--muted)">${a.login?'Логин: '+esc(a.login)+' · ':''}с нами с ${new Date(a.created_at).toLocaleDateString('ru-RU',{day:'numeric',month:'long',year:'numeric'})}</div></div>${a.admin?'<a class="btn" href="/admin">📋 Управление магазином</a>':''}</div>
+     <div class="stats"><a href="#my"><b>${a.counts.orders}</b><small>📦 заказов</small></a><a href="#my"><b>${a.counts.requests}</b><small>💡 заявок на печать</small></a>
+       <a href="#fav"><b>${S.fav.length}</b><small>♥ в избранном</small></a><a href="#" id="toCart"><b>${S.cart.reduce((x,l)=>x+l.qty,0)}</b><small>🛒 в корзине</small></a></div></div>
+   <div class="card" id="secProfile"><h3>📇 Контакты для заказов</h3><p class="fine" style="margin-top:-4px">Подставляются при оформлении заказа и заявки, чтобы не вводить их каждый раз. Видны только вам и магазину в ваших заказах.</p>
+     <div class="row"><label class="f"><span>Как к вам обращаться</span><input id="pfName" maxlength="160" value="${esc(a.name)}" autocomplete="name"></label>
+     <label class="f"><span>Телефон</span><input id="pfPhone" maxlength="60" value="${esc(a.phone)}" autocomplete="tel" inputmode="tel" placeholder="+7…"></label></div>
+     <div class="row"><label class="f"><span>Почта</span><input id="pfMail" maxlength="160" value="${esc(a.email)}" autocomplete="email" inputmode="email"></label>
+     <label class="f"><span>Способ получения</span><select id="pfDel"><option value="">выберу при заказе</option>${del.map(d=>`<option value="${esc(d.id)}" ${a.delivery===d.id?'selected':''}>${esc(d.label)}</option>`).join('')}</select></label></div>
+     <label class="f"><span>Адрес доставки</span><textarea id="pfAddr" rows="2" maxlength="1000" autocomplete="street-address">${esc(a.address)}</textarea></label>
+     <button class="btn pri" id="pfSave">💾 Сохранить</button> <span id="pfRes"></span></div>
+   <div class="card" id="secSettings"><h3>🔐 Вход и безопасность</h3>
+     ${a.providers.length?`<p>Вход через: ${a.providers.map(p=>'<b>'+esc(p.name)+'</b>').join(', ')}</p>`:''}
+     <div style="font-weight:800;margin:6px 0">${a.has_password?'Сменить пароль':'Задать пароль'}</div>${a.has_password?'':'<p class="fine" style="margin-top:0">Вы входите через соцсеть. Пароль позволит входить и по логину.</p>'}
+     <div class="row">${a.has_password?'<label class="f"><span>Текущий пароль</span><input type="password" id="pwOld" autocomplete="current-password"></label>':''}
+     <label class="f"><span>Новый пароль (от 6 символов)</span><input type="password" id="pwNew" autocomplete="new-password"></label><label class="f"><span>Повторите</span><input type="password" id="pwNew2" autocomplete="new-password"></label></div>
+     <button class="btn" id="pwSave">🔑 Сохранить пароль</button> <span id="pwRes"></span>
+     <div style="border-top:1px dashed var(--line);margin-top:16px;padding-top:12px;display:flex;gap:10px;flex-wrap:wrap"><button class="btn" id="outAll">🚪 Выйти на всех устройствах</button><button class="btn" id="outMe">Выйти</button></div></div>
+   ${a.admin?'':`<div class="card"><h3>🗑 Удалить аккаунт</h3><p class="fine" style="margin-top:-4px">Удалятся профиль, контакты, избранное и вход. Заказы останутся у магазина для учёта, но больше не будут связаны с аккаунтом. Отменить удаление нельзя.</p>
+     <div class="row"><label class="f"><span>Впишите слово «удалить»</span><input id="dlWord" autocomplete="off"></label>${a.has_password?'<label class="f"><span>Пароль</span><input type="password" id="dlPw" autocomplete="current-password"></label>':''}</div>
+     <button class="btn danger" id="dlGo">Удалить аккаунт</button> <span id="dlRes" class="err"></span></div>`}</div>`;
+  if(sec==='settings')$('secSettings').scrollIntoView({block:'start'});
+  $('toCart').onclick=e=>{e.preventDefault();openCart()};
+  $('pfSave').onclick=async()=>{try{S.acct=await api('/api/account',{method:'PATCH',json:{name:$('pfName').value,phone:$('pfPhone').value,email:$('pfMail').value,delivery:$('pfDel').value,address:$('pfAddr').value}});
+      S.user.name=S.acct.name;updAcct();$('acName').textContent=S.acct.name;$('acAva').textContent=S.acct.name.trim().charAt(0).toUpperCase();$('pfRes').innerHTML='<span class="ok">✓ Сохранено</span>'}catch(e){$('pfRes').innerHTML='<span class="err">'+esc(e.message)+'</span>'}};
+  $('pwSave').onclick=async()=>{const n=$('pwNew').value;if(n.length<6)return $('pwRes').innerHTML='<span class="err">Пароль от 6 символов</span>';if(n!==$('pwNew2').value)return $('pwRes').innerHTML='<span class="err">Пароли не совпадают</span>';
+    try{await api('/api/account/password',{method:'POST',json:{old:$('pwOld')?$('pwOld').value:'',new:n}});['pwOld','pwNew','pwNew2'].forEach(i=>{if($(i))$(i).value=''});$('pwRes').innerHTML='<span class="ok">✓ Пароль сохранён. На других устройствах нужно войти заново</span>'}catch(e){$('pwRes').innerHTML='<span class="err">'+esc(e.message)+'</span>'}};
+  $('outMe').onclick=logout;
+  $('outAll').onclick=async()=>{if(!confirm('Выйти из аккаунта на всех устройствах, включая этот?'))return;try{await api('/api/account/logout-all',{method:'POST'})}catch(e){}S.user=null;S.acct=null;updAcct();location.hash='#/';route()};
+  if($('dlGo'))$('dlGo').onclick=async()=>{if(!confirm('Точно удалить аккаунт? Это нельзя отменить.'))return;
+    try{await api('/api/account/delete',{method:'POST',json:{confirm:$('dlWord').value,password:$('dlPw')?$('dlPw').value:''}});S.user=null;S.acct=null;S.fav=[];updFav();updAcct();toast('Аккаунт удалён');location.hash='#/';route()}catch(e){$('dlRes').textContent=e.message}}}
 async function myPage(){const v=$('view');v.innerHTML='<div class="empty">Загружаю…</div>';
   let orders=[],reqs=[];const mine=ls.get('shop_mine',[]);
   if(S.user){try{[orders,reqs]=await Promise.all([api('/api/shop/orders/mine'),api('/api/shop/requests/mine')])}catch(e){}}

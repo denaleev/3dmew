@@ -9,13 +9,14 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 
-from . import admin, ai, auth, catalog, maxbot, seo, shop, social, store
+from . import account, admin, ai, auth, catalog, maxbot, seo, shop, social, store
 from .config import settings
 from .db import engine
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 app = FastAPI(title="Магазин 3D-печати", docs_url=None, redoc_url=None, openapi_url=None)
 app.include_router(auth.router)
+app.include_router(account.router)
 app.include_router(store.router)
 app.include_router(ai.router)
 app.include_router(social.public)  # before shop: /products/{pid}/reviews must win over /products/{pid}/{kind}
