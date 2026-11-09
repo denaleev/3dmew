@@ -247,3 +247,13 @@ def test_publish_keeps_weight_and_by_item_lookup():
     r = a.get(f"/api/admin/products/by-item/{iid}").json()
     assert r["id"] == pid and r["grams"] == 42
     assert a.get("/api/admin/products/by-item/nope").status_code == 404
+    # colours ticked in the builder are applied on publishing; an empty list means the whole palette
+    c = a.post("/api/admin/colors", data={"name": "Цвет билдера " + iid, "hex": "#123456"}).json()
+    st = {"title": "Котик с весом", "price": "500", "shopColors": f"{c['id']},999999"}
+    assert a.put(f"/api/items/{iid}", json={"kind": "card", "title": "Котик с весом", "thumb": None, "state": st, "t": 2}).status_code == 200
+    a.post(f"/api/admin/products/from-item/{iid}")
+    assert a.get(f"/api/admin/products/by-item/{iid}").json()["colors"] == [c["id"]]
+    st["shopColors"] = ""
+    a.put(f"/api/items/{iid}", json={"kind": "card", "title": "Котик с весом", "thumb": None, "state": st, "t": 3})
+    a.post(f"/api/admin/products/from-item/{iid}")
+    assert a.get(f"/api/admin/products/by-item/{iid}").json()["colors"] == []

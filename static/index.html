@@ -97,6 +97,10 @@ details[open]{padding-bottom:6px}
 .swatches{display:flex;flex-wrap:wrap;gap:7px;margin:4px 0 12px}
 .swatches button{width:30px;height:30px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 1.5px var(--line);cursor:pointer}
 .swatches button.act{box-shadow:0 0 0 2.5px var(--acc)}
+.cgrid{display:flex;flex-wrap:wrap;gap:6px}.cgrid label{display:inline-flex;align-items:center;gap:6px;border:1.5px solid var(--line);border-radius:12px;padding:4px 9px 4px 5px;font-size:13px;font-weight:600;cursor:pointer;background:#fff}
+.cgrid label:has(input:checked){border-color:#a855f7;background:#faf5ff}.cgrid i{width:18px;height:18px;border-radius:50%;background-size:cover;border:1px solid rgba(0,0,0,.1)}.cgrid input{margin:0}
+.smrow{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0}.smi{width:84px;font-size:11px;text-align:center}.smi .th{width:84px;height:84px;border-radius:10px;overflow:hidden;background:#f3ece6;display:grid;place-items:center;font-size:26px}
+.smi img{width:100%;height:100%;object-fit:cover}.smi .ac{display:flex;justify-content:center;gap:2px;margin-top:3px}.smi .ac button{border:0;background:#f3ece6;border-radius:6px;cursor:pointer;padding:2px 5px;font-size:12px}
 .mini{display:none;border:1.5px solid var(--line);border-radius:14px;padding:12px;margin:-4px 0 14px}
 .mini.on{display:block}
 .ov{position:fixed;inset:0;background:rgba(45,20,50,.45);z-index:20;display:none;align-items:flex-start;justify-content:center;padding:4vh 16px;overflow:auto}
@@ -296,6 +300,16 @@ body:not(.srv) .srv-only,body:not(.adm) .adm-only{display:none!important}
       </div>
       <label class="f srv-only"><span>Раздел в магазине</span><input type="text" id="shopCat" list="shopCats" placeholder="напр. Антистрессы, Вазы, Брелоки"><datalist id="shopCats"></datalist></label>
       <label class="f srv-only"><span>В наличии, шт. (0 — печать под заказ)</span><input type="text" id="shopStock" inputmode="numeric" placeholder="0"></label>
+    </details>
+    <details id="shopBox" class="srv-only">
+      <summary>🛍 Витрина: цвета, фото и видео</summary>
+      <div style="font-weight:800;font-size:13px;margin-bottom:4px">Цвета, из которых выбирает покупатель</div>
+      <div class="status" style="margin-bottom:8px">Ничего не отмечено — доступна вся палитра. Стандартный цвет задаётся в калькуляторе («Цвет пластика»). Применится после «💾 Сохранить изменения в магазине».</div>
+      <input type="hidden" id="shopColors"><div class="cgrid" id="shopColorGrid"><span class="status">Загружаю палитру…</span></div>
+      <div style="display:flex;gap:6px;margin:6px 0 14px"><button class="btn sm" type="button" id="scAll">Все</button><button class="btn sm" type="button" id="scNone">Снять все</button></div>
+      <div style="font-weight:800;font-size:13px;margin-bottom:4px">Фото и видео в карусели товара</div>
+      <div id="shopMedia" class="status">Фото и видео можно добавить после публикации карточки на витрине.</div>
+      <input type="file" id="smFile" multiple hidden accept="image/*,video/mp4,video/quicktime,video/webm,.mp4,.mov,.webm">
     </details>
     <details id="filesBox">
       <summary>📎 Файлы для печати <b id="nFiles" class="fcount"></b></summary>
@@ -1521,7 +1535,7 @@ $('authGo').onclick=async()=>{const name=$('aName').value.trim(),pw=$('aPass').v
     if(authMode==='up'){if(ex)return err('Такое имя уже есть, выбери другое или войди');const u={id:uid(),name,h,t:Date.now()};await dbPut('users',u);signIn(u)}
     else{if(!ex)return err('Аккаунт не найден. Создай новый.');if(ex.h!==h)return err('Неверный пароль');signIn(ex)}
   }catch(e){err('Ошибка хранилища: '+e.message)}};
-function signIn(u){S.user={id:u.id,name:u.name,admin:!!u.admin};if(!SERVER)try{localStorage.setItem('card3d_user',u.id)}catch(e){}if(SERVER)loadPrefs();window.calcLoadCfg&&calcLoadCfg();$('authOv').classList.remove('on');updAcct();
+function signIn(u){S.user={id:u.id,name:u.name,admin:!!u.admin};if(!SERVER)try{localStorage.setItem('card3d_user',u.id)}catch(e){}if(SERVER)loadPrefs();window.calcLoadCfg&&calcLoadCfg();window.drawShopColors&&setTimeout(drawShopColors);$('authOv').classList.remove('on');updAcct();
   if(S.pendingSave){S.pendingSave=false;saveCard('card')}
   if(S.photoBlob&&!S.photoSaved)rememberPhoto(S.photoBlob)}
 function updAcct(){window.filesRefresh&&filesRefresh();document.body.classList.toggle('adm',!!(S.user&&S.user.admin));$('acctBtn').textContent=S.user?'👤 '+S.user.name+' · кабинет':'👤 Войти'}
@@ -1536,7 +1550,7 @@ async function loadPrefs(){try{const r=await api('/api/prefs'),th=(r&&r.themes)|
     const ids=new Set(th.map(t=>t.id));const merged=th.concat(S.myThemes.filter(t=>!ids.has(t.id)));
     const changed=merged.length!==th.length;S.myThemes=merged;drawMyThemes();if(changed)persistThemes()}catch(e){}}
 if(SERVER){$('keyBox').style.display='none';document.querySelector('#cabOv .status').textContent='Карточки, черновики и фото хранятся в твоём аккаунте на сервере.';
-  (async()=>{try{const u=await api('/api/me');if(u&&u.id){S.user={id:u.id,name:u.name,admin:!!u.admin};updAcct();loadPrefs();window.calcLoadCfg&&calcLoadCfg();
+  (async()=>{try{const u=await api('/api/me');if(u&&u.id){S.user={id:u.id,name:u.name,admin:!!u.admin};updAcct();loadPrefs();window.calcLoadCfg&&calcLoadCfg();window.drawShopColors&&setTimeout(drawShopColors);
       const m=location.hash.match(/card=([\w-]+)/);if(m){history.replaceState(null,'',location.pathname);openItem(m[1]).catch(()=>saveState('⚠️ Карточка не найдена в твоей библиотеке'))}}}catch(e){}
     if(/[?&]login=fail/.test(location.search))openAuth('Не получилось войти через соцсеть. Попробуй ещё раз.');
     if(/[?&]login=/.test(location.search))history.replaceState(null,'',location.pathname)})()}
@@ -1578,7 +1592,7 @@ $('card').addEventListener('pointerup',()=>{S.dirty=true});
 setInterval(()=>{if(S.user&&S.dirty&&!saving&&(S.product||S.baseData)&&!/%|…/.test($('work').textContent)){S.dirty=false;saveCard('draft')}},8000);
 $('newCard').onclick=async()=>{if(S.user&&S.dirty&&(S.product||S.baseData))await saveCard('draft');fixedOff();
   S.cardId=null;S.draftId=null;window.filesRefresh&&setTimeout(filesRefresh);S.product=null;S.baseData=null;S.mask=null;S.photoBlob=null;S.photoSaved=false;S.dirty=false;S.needProc=false;S.chipOff={x:0,y:0};
-  drop.classList.remove('has');$('dropTitle').textContent='Загрузи фото изделия';['title','desc','price','old','calcGrams','calcH','calcM','calcFinish','calcExtra','calcMarkup','shopCat'].forEach(i=>$(i).value='');$('calcN').value=1;window.calcUpdate&&calcUpdate();S.depth=null;S.guess=null;showGuesses([]);PT.sel=false;$('thumbInfo').textContent='';
+  drop.classList.remove('has');$('dropTitle').textContent='Загрузи фото изделия';['title','desc','price','old','calcGrams','calcH','calcM','calcFinish','calcExtra','calcMarkup','shopCat','shopColors'].forEach(i=>$(i).value='');S.stateHasColors=false;window.pubCheck&&setTimeout(pubCheck);$('calcN').value=1;window.calcUpdate&&calcUpdate();S.depth=null;S.guess=null;showGuesses([]);PT.sel=false;$('thumbInfo').textContent='';
   ['pDx','pDy','pRot','p3Y','p3P'].forEach(i=>$(i).value=0);$('pScale').value=100;$('pFlip').checked=false;updLabels();setWork('');saveState('Новая карточка');renderCard();goTab('photo')};
 
 /* cabinet */
@@ -1603,7 +1617,7 @@ async function drawCab(){document.querySelectorAll('[data-ct]').forEach(b=>b.cla
       B('🗑',async()=>{if(confirm(cabTab==='draft'?'Удалить черновик?':'Удалить карточку из библиотеки?')){await dbDel('items',it.id);await dbDel('blobs',it.id);filesDropItem(it.id);if(S.cardId===it.id)S.cardId=null;if(S.draftId===it.id)S.draftId=null;drawCab()}})}
     el.appendChild(ac);g.appendChild(el)}}
 async function openItem(id){const rec=await dbGet('items',id),b=await dbGet('blobs',id);if(!rec)return;
-  $('cabOv').classList.remove('on');applyState(rec.state);
+  $('cabOv').classList.remove('on');$('shopColors').value='';S.stateHasColors=!!(rec.state&&'shopColors' in rec.state);applyState(rec.state);
   fixedOff();S.product=null;
   if(b&&b.product){const img=await blobImg(b.product),c=mkCanvas(img.width,img.height);c.getContext('2d').drawImage(img,0,0);S.product=c;S.productCut=b.productCut!==false;S.pv=null}
   // a ready card (imported, or made elsewhere): show its picture as it is, without building it again from the photo
@@ -1694,15 +1708,39 @@ if(SERVER){document.body.classList.add('srv');
     if(!S.product&&!S.photoBlob&&!S.fixed){goTab('photo');return saveState('⚠️ Сначала загрузи фото изделия: без него на витрину попадёт пустая карточка')}
     await saveCard('card');if(!S.cardId||S.dirty)return;
     saveState('⏳ Публикую в магазине…');
-    try{const r=await api('/api/admin/products/from-item/'+S.cardId,{method:'POST'});S.pub={id:r.id,url:r.url};$('pubShop').textContent='💾 Сохранить изменения в магазине';$('dl2').textContent='💾 Сохранить изменения в магазине';
+    try{const r=await api('/api/admin/products/from-item/'+S.cardId,{method:'POST'});S.pub={id:r.id,url:r.url};S.stateHasColors=true;drawShopMedia();$('pubShop').textContent='💾 Сохранить изменения в магазине';$('dl2').textContent='💾 Сохранить изменения в магазине';
       $('saveState').innerHTML='';const a=document.createElement('a');a.href=r.url;a.target='_blank';a.textContent=(r.new?'✓ Опубликовано в магазине':'✓ Изменения сохранены в магазине')+' → открыть';$('saveState').appendChild(a);shopCats()}
     catch(e){saveState('⚠️ Не опубликовалось: '+e.message)}};
   // a card that is already in the shop: «Сохранить изменения» saves it and updates the product; the weight comes from the product if the calculator is empty
   window.pubCheck=async()=>{S.pub=null;$('pubShop').textContent='🛒 Опубликовать на витрине';$('dl2').textContent='🛒 Опубликовать на витрине';
-    if(!S.cardId||!S.user||!S.user.admin)return;const id=S.cardId;
+    if(!S.cardId||!S.user||!S.user.admin){drawShopColors();drawShopMedia();return}const id=S.cardId;
     try{const r=await api('/api/admin/products/by-item/'+encodeURIComponent(id));if(S.cardId!==id)return;S.pub=r;
       $('pubShop').textContent='💾 Сохранить изменения в магазине';$('dl2').textContent='💾 Сохранить изменения в магазине';
-      if(!$('calcGrams').value.trim()&&r.grams){$('calcGrams').value=String(r.grams).replace('.',',');window.calcUpdate&&calcUpdate()}}catch(e){}};
+      if(!$('calcGrams').value.trim()&&r.grams){$('calcGrams').value=String(r.grams).replace('.',',');window.calcUpdate&&calcUpdate()}
+      if(!S.stateHasColors)$('shopColors').value=(r.colors||[]).join(',');drawShopColors();drawShopMedia()}catch(e){drawShopColors();drawShopMedia()}};
+  // «Витрина: цвета, фото и видео»: colours go into the card (applied on saving to the shop), photos and videos straight to the product
+  let PAL=null;const bgOf=c=>c.thumb?`background-image:url('${c.thumb}')`:(c.hex2?`background:linear-gradient(135deg,${c.hex} 0 50%,${c.hex2} 50% 100%)`:`background:${c.hex}`);
+  const escH=t=>String(t==null?'':t).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+  window.drawShopColors=async()=>{const g=$('shopColorGrid');if(!S.user||!S.user.admin){g.innerHTML='<span class="status">Только для администратора магазина.</span>';return}
+    try{PAL=PAL||await api('/api/admin/colors')}catch(e){g.innerHTML='<span class="status">'+escH(e.message)+'</span>';return}
+    const on=new Set(String($('shopColors').value||'').split(',').filter(Boolean).map(Number));
+    g.innerHTML=PAL.length?PAL.map(c=>`<label title="${escH(c.material||'')}"><input type="checkbox" data-sc="${c.id}" ${on.has(c.id)?'checked':''}><i style="${bgOf(c)}"></i>${escH(c.name)}${c.active?'':' (скрыт)'}</label>`).join(''):'<span class="status">Палитра пуста: добавь цвета в <a href="/admin#colors" target="_blank">админке → Цвета</a>.</span>'};
+  const scSave=()=>{$('shopColors').value=[...document.querySelectorAll('[data-sc]:checked')].map(x=>x.dataset.sc).join(',');S.dirty=true};
+  $('shopColorGrid').addEventListener('change',scSave);
+  $('scAll').onclick=()=>{document.querySelectorAll('[data-sc]').forEach(x=>x.checked=true);scSave()};$('scNone').onclick=()=>{document.querySelectorAll('[data-sc]').forEach(x=>x.checked=false);scSave()};
+  window.drawShopMedia=async()=>{const box=$('shopMedia');if(!S.pub){box.innerHTML='Фото и видео можно добавить после публикации карточки на витрине.';return}
+    const id=S.pub.id;let p;try{p=await api('/api/shop/products/'+id)}catch(e){box.textContent=e.message;return}const media=p.media||[];
+    box.innerHTML=`<div class="smrow"><div class="smi"><div class="th"><img src="${escH(p.thumb)}" alt=""></div>⭐ главное (карточка)</div>
+      ${media.map((m,i)=>`<div class="smi"><div class="th">${m.kind==='video'?(m.thumb?`<img src="${escH(m.thumb)}" alt="">`:'🎬'):`<img src="${escH(m.thumb||m.url)}" alt="">`}</div>
+      <div class="ac">${i?`<button type="button" data-mv="${i}" data-d="-1" title="Левее">←</button>`:''}${i<media.length-1?`<button type="button" data-mv="${i}" data-d="1" title="Правее">→</button>`:''}<button type="button" data-del="${m.id}" title="Удалить">🗑</button></div></div>`).join('')}</div>
+      <button class="btn sm" type="button" id="smAdd">📷 Добавить фото или видео</button> <span id="smUp"></span>`;
+    $('smAdd').onclick=()=>$('smFile').click();
+    box.querySelector('.smrow').onclick=async e=>{const b=e.target.closest('button');if(!b)return;
+      try{if(b.dataset.del){if(!confirm('Удалить этот файл из карусели товара?'))return;await api(`/api/admin/products/${id}/media/${b.dataset.del}`,{method:'DELETE'})}
+        else if(b.dataset.mv){const ids=media.map(m=>m.id),i=+b.dataset.mv,j=i+ +b.dataset.d;[ids[i],ids[j]]=[ids[j],ids[i]];await api(`/api/admin/products/${id}/media`,{method:'PUT',json:{ids}})}
+        drawShopMedia()}catch(er){alert(er.message)}}};
+  $('smFile').addEventListener('change',async e=>{const fs=[...e.target.files];e.target.value='';if(!fs.length||!S.pub)return;const fd=new FormData();fs.forEach(f=>fd.append('files',f,f.name));
+    $('smUp').textContent='⏳ Загружаю '+fs.length+'…';try{await api('/api/admin/products/'+S.pub.id+'/media',{method:'POST',form:fd});drawShopMedia()}catch(er){$('smUp').textContent='⚠️ '+er.message}});
   if(S.cardId)pubCheck()}
 
 /* ---------- print files (3MF/STL/G-code) kept with a card, only for its author ---------- */

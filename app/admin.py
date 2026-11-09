@@ -123,6 +123,11 @@ def publish_card(item_id: str, db: Session = Depends(get_db), admin: User = Depe
     if src is None:
         raise HTTPException(400, "У карточки нет картинки: открой её и сохрани ещё раз")
     p.image, p.thumb = jpeg(src, 1600, 88), jpeg(src, 520, 82)
+    # colours a buyer can choose, ticked in the builder («Витрина: цвета, фото и видео»); empty = the whole palette
+    if "shopColors" in st:
+        want = [int(x) for x in str(st.get("shopColors") or "").split(",") if x.strip().isdigit()]
+        known = set(db.execute(select(FilamentColor.id).where(FilamentColor.id.in_(want))).scalars()) if want else set()
+        p.colors = [c for c in dict.fromkeys(want) if c in known] or None
     # the plastic colour typed in the builder's calculator becomes the standard colour, if it is in the palette
     cname = str(st.get("calcColor") or "").strip().lower()
     if cname:
@@ -141,7 +146,8 @@ def product_by_item(item_id: str, db: Session = Depends(get_db), _: User = Depen
     p = db.execute(select(Product).where(Product.item_id == item_id)).scalar_one_or_none()
     if not p:
         raise HTTPException(404, "Карточка ещё не опубликована")
-    return {"id": p.id, "grams": f(p.grams), "print_minutes": p.print_minutes, "url": f"/#product/{p.id}"}
+    return {"id": p.id, "grams": f(p.grams), "print_minutes": p.print_minutes, "colors": list(p.colors or []),
+            "published": p.published, "url": f"/#product/{p.id}"}
 
 
 @router.get("/products")
