@@ -255,13 +255,11 @@ body:not(.srv) .srv-only,body:not(.adm) .adm-only{display:none!important}
     </div>
     <details id="calcBox">
       <summary>🧮 Калькулятор цены: пластик, время печати, расходы</summary>
-      <div class="row">
-        <label class="f"><span>Тип пластика</span><select id="calcMat"></select></label>
-        <label class="f"><span>Цена пластика, ₽ за кг</span><input type="text" id="calcKg" inputmode="decimal" placeholder="из настроек" title="Сколько стоила твоя катушка: впиши цену за 1 кг. Пусто — цена из настроек мастерской"></label>
-      </div>
+      <label class="f"><span>Пластик и цвет <small style="font-weight:600;opacity:.7">(тип и цена за кг задаются в <a href="/admin#colors" target="_blank">админке → Цвета</a>; этот цвет станет стандартным в карточке)</small></span>
+        <div style="display:flex;gap:8px;align-items:center"><i id="calcSw" style="width:26px;height:26px;border-radius:50%;flex:none;border:1px solid rgba(0,0,0,.12);background:#eee"></i><select id="calcPick" style="flex:1;min-width:0"></select></div></label>
+      <input type="hidden" id="calcMat"><input type="hidden" id="calcKg"><input type="hidden" id="calcColor">
       <div class="row">
         <label class="f"><span>Вес из слайсера, г</span><input type="text" id="calcGrams" inputmode="decimal" placeholder="напр. 45"></label>
-        <label class="f"><span>Цвет пластика (стандартный на витрине)</span><input type="text" id="calcColor" placeholder="напр. Silk розовый"></label>
       </div>
       <div class="row">
         <label class="f"><span>Печать, часов</span><input type="text" id="calcH" inputmode="decimal" placeholder="0"></label>
@@ -279,7 +277,6 @@ body:not(.srv) .srv-only,body:not(.adm) .adm-only{display:none!important}
       <div class="row" style="margin:10px 0 12px"><button class="btn sm pri" id="calcApply" type="button" disabled>✓ Поставить цену</button><button class="btn sm" id="calcCfgBtn" type="button">⚙️ Расходы мастерской</button></div>
       <div class="mini" id="calcCfg">
         <div class="status" id="calcCfgNote" style="margin-bottom:10px"></div>
-        <label class="f"><span>Пластик, ₽ за 1 кг (по строке: название = цена)</span><textarea data-cs="materials" rows="5"></textarea></label>
         <div class="row"><label class="f"><span>Отходы пластика, %</span><input type="text" data-cs="waste_pct" inputmode="decimal"></label>
           <label class="f"><span>Брак (неудачные печати), %</span><input type="text" data-cs="fail_pct" inputmode="decimal"></label></div>
         <div class="row"><label class="f"><span>Мощность принтера, Вт</span><input type="text" data-cs="power_w" inputmode="decimal"></label>
@@ -1535,7 +1532,7 @@ $('authGo').onclick=async()=>{const name=$('aName').value.trim(),pw=$('aPass').v
     if(authMode==='up'){if(ex)return err('Такое имя уже есть, выбери другое или войди');const u={id:uid(),name,h,t:Date.now()};await dbPut('users',u);signIn(u)}
     else{if(!ex)return err('Аккаунт не найден. Создай новый.');if(ex.h!==h)return err('Неверный пароль');signIn(ex)}
   }catch(e){err('Ошибка хранилища: '+e.message)}};
-function signIn(u){S.user={id:u.id,name:u.name,admin:!!u.admin};if(!SERVER)try{localStorage.setItem('card3d_user',u.id)}catch(e){}if(SERVER)loadPrefs();window.calcLoadCfg&&calcLoadCfg();window.drawShopColors&&setTimeout(drawShopColors);$('authOv').classList.remove('on');updAcct();
+function signIn(u){S.user={id:u.id,name:u.name,admin:!!u.admin};if(!SERVER)try{localStorage.setItem('card3d_user',u.id)}catch(e){}if(SERVER)loadPrefs();window.calcLoadCfg&&calcLoadCfg();window.calcLoadPal&&calcLoadPal();window.drawShopColors&&setTimeout(drawShopColors);$('authOv').classList.remove('on');updAcct();
   if(S.pendingSave){S.pendingSave=false;saveCard('card')}
   if(S.photoBlob&&!S.photoSaved)rememberPhoto(S.photoBlob)}
 function updAcct(){window.filesRefresh&&filesRefresh();document.body.classList.toggle('adm',!!(S.user&&S.user.admin));$('acctBtn').textContent=S.user?'👤 '+S.user.name+' · кабинет':'👤 Войти'}
@@ -1550,7 +1547,7 @@ async function loadPrefs(){try{const r=await api('/api/prefs'),th=(r&&r.themes)|
     const ids=new Set(th.map(t=>t.id));const merged=th.concat(S.myThemes.filter(t=>!ids.has(t.id)));
     const changed=merged.length!==th.length;S.myThemes=merged;drawMyThemes();if(changed)persistThemes()}catch(e){}}
 if(SERVER){$('keyBox').style.display='none';document.querySelector('#cabOv .status').textContent='Карточки, черновики и фото хранятся в твоём аккаунте на сервере.';
-  (async()=>{try{const u=await api('/api/me');if(u&&u.id){S.user={id:u.id,name:u.name,admin:!!u.admin};updAcct();loadPrefs();window.calcLoadCfg&&calcLoadCfg();window.drawShopColors&&setTimeout(drawShopColors);
+  (async()=>{try{const u=await api('/api/me');if(u&&u.id){S.user={id:u.id,name:u.name,admin:!!u.admin};updAcct();loadPrefs();window.calcLoadCfg&&calcLoadCfg();window.calcLoadPal&&calcLoadPal();window.drawShopColors&&setTimeout(drawShopColors);
       const m=location.hash.match(/card=([\w-]+)/);if(m){history.replaceState(null,'',location.pathname);openItem(m[1]).catch(()=>saveState('⚠️ Карточка не найдена в твоей библиотеке'))}}}catch(e){}
     if(/[?&]login=fail/.test(location.search))openAuth('Не получилось войти через соцсеть. Попробуй ещё раз.');
     if(/[?&]login=/.test(location.search))history.replaceState(null,'',location.pathname)})()}
@@ -1559,9 +1556,9 @@ else (async()=>{try{const id=localStorage.getItem('card3d_user');if(id){const u=
 /* state of the editor */
 function captureState(){const o={theme:S.theme,logo:S.logoSrc||null,chipOff:S.chipOff||{x:0,y:0}};
   document.querySelectorAll('aside input,aside select,aside textarea').forEach(el=>{if(el.id&&el.type!=='file'&&el.id!=='apiKey')o[el.id]=el.type==='checkbox'?el.checked:el.value});return o}
-function applyState(o){if(o.calcMat&&window.calcEnsureMat)calcEnsureMat(o.calcMat);for(const k in o){const el=document.getElementById(k);if(!el||!el.closest||!el.closest('aside')||el.type==='file')continue;if(el.type==='checkbox')el.checked=!!o[k];else el.value=o[k];if(el._mark)el._mark()}
+function applyState(o){$('calcMat').value='';$('calcKg').value='';$('calcColor').value='';for(const k in o){const el=document.getElementById(k);if(!el||!el.closest||!el.closest('aside')||el.type==='file')continue;if(el.type==='checkbox')el.checked=!!o[k];else el.value=o[k];if(el._mark)el._mark()}
   if(o.theme)S.theme=o.theme;S.chipOff=o.chipOff||{x:0,y:0};S.logoSrc=o.logo||null;S.logo=null;if(S.logoSrc)buildLogo(false);else showLogo();
-  $('flipBtn').classList.toggle('on',$('pFlip').checked);S.pv=null;markTheme();window.markSw&&markSw();updLabels();window.calcUpdate&&calcUpdate()}
+  $('flipBtn').classList.toggle('on',$('pFlip').checked);S.pv=null;markTheme();window.markSw&&markSw();updLabels();window.calcPickSync&&calcPickSync();window.calcUpdate&&calcUpdate()}
 
 /* photos */
 async function rememberPhoto(file,img){if(!S.user||!file)return;try{
@@ -1592,7 +1589,7 @@ $('card').addEventListener('pointerup',()=>{S.dirty=true});
 setInterval(()=>{if(S.user&&S.dirty&&!saving&&(S.product||S.baseData)&&!/%|…/.test($('work').textContent)){S.dirty=false;saveCard('draft')}},8000);
 $('newCard').onclick=async()=>{if(S.user&&S.dirty&&(S.product||S.baseData))await saveCard('draft');fixedOff();
   S.cardId=null;S.draftId=null;window.filesRefresh&&setTimeout(filesRefresh);S.product=null;S.baseData=null;S.mask=null;S.photoBlob=null;S.photoSaved=false;S.dirty=false;S.needProc=false;S.chipOff={x:0,y:0};
-  drop.classList.remove('has');$('dropTitle').textContent='Загрузи фото изделия';['title','desc','price','old','calcGrams','calcH','calcM','calcFinish','calcExtra','calcMarkup','shopCat','shopColors'].forEach(i=>$(i).value='');S.stateHasColors=false;window.pubCheck&&setTimeout(pubCheck);$('calcN').value=1;window.calcUpdate&&calcUpdate();S.depth=null;S.guess=null;showGuesses([]);PT.sel=false;$('thumbInfo').textContent='';
+  drop.classList.remove('has');$('dropTitle').textContent='Загрузи фото изделия';['title','desc','price','old','calcGrams','calcH','calcM','calcFinish','calcExtra','calcMarkup','shopCat','shopColors','calcMat','calcKg','calcColor'].forEach(i=>$(i).value='');window.calcPickSync&&calcPickSync();S.stateHasColors=false;window.pubCheck&&setTimeout(pubCheck);$('calcN').value=1;window.calcUpdate&&calcUpdate();S.depth=null;S.guess=null;showGuesses([]);PT.sel=false;$('thumbInfo').textContent='';
   ['pDx','pDy','pRot','p3Y','p3P'].forEach(i=>$(i).value=0);$('pScale').value=100;$('pFlip').checked=false;updLabels();setWork('');saveState('Новая карточка');renderCard();goTab('photo')};
 
 /* cabinet */
@@ -1644,15 +1641,28 @@ function calcPrice(i,s){const n=Math.max(1,Math.floor(cnum(i.pieces,1))||1),g=cn
   return{g,t,kg,plastic:m,power:e,wear:a,failed:printing-m-e-a,labour,packaging:s.packaging,extras,cost,raw,price,fees:price*fees,profit,pph:t>0?profit/t:null,markup}}
 const rub=x=>(Math.round(x*100)/100).toLocaleString('ru-RU',{minimumFractionDigits:x<100?2:0,maximumFractionDigits:2})+' ₽';
 const esc=x=>String(x==null?'':x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-function calcEnsureMat(name){const sel=$('calcMat');if(name&&![...sel.options].some(o=>o.value===name)){const o=document.createElement('option');o.value=o.textContent=name;sel.appendChild(o)}}
-function calcFillMats(){const sel=$('calcMat'),cur=sel.value;sel.innerHTML='';for(const k in CS.materials){const o=document.createElement('option');o.value=k;o.textContent=`${k} · ${CS.materials[k]} ₽/кг`;sel.appendChild(o)}
-  const ot=document.createElement('option');ot.value='__other';ot.textContent='＋ Другой пластик…';sel.appendChild(ot);
-  if(cur&&cur!=='__other'){calcEnsureMat(cur);sel.value=cur}calcKgHint()}
-function calcKgHint(){const m=$('calcMat').value,v=CS.materials[m];$('calcKg').placeholder=v!=null?v+' (из настроек)':'впиши цену за кг'}
-$('calcMat').addEventListener('change',()=>{const sel=$('calcMat');if(sel.value!=='__other')return calcKgHint();
-  const n=(prompt('Название пластика, например: PLA Galaxy, Wood PLA, ASA')||'').trim().slice(0,40);
-  if(!n){sel.selectedIndex=0;calcKgHint();return}const o=document.createElement('option');o.value=o.textContent=n;sel.insertBefore(o,sel.lastElementChild);sel.value=n;calcKgHint();
-  if(!cnum($('calcKg').value,0)){$('calcKg').focus()}});
+// plastic + colour from the shop palette («Цвета»): sets the material, its price per kg and the standard colour of the card
+let PALC=[];
+function calcEnsureMat(){}
+function calcPickFill(){const sel=$('calcPick');const by={};PALC.forEach(c=>{const m=(c.material||'Пластик').trim();(by[m]=by[m]||[]).push(c)});
+  const k=x=>x.kg_price!=null?' · '+Math.round(x.kg_price)+' ₽/кг':' · цена не задана';
+  let h='<option value="">— выбери пластик и цвет —</option>';
+  if(PALC.length)h+=Object.keys(by).map(m=>`<optgroup label="${esc(m)}">${by[m].map(c=>`<option value="c${c.id}">${esc(c.name)}${k(c)}</option>`).join('')}</optgroup>`).join('');
+  else h+=Object.keys(CS.materials).map(m=>`<option value="m${esc(m)}">${esc(m)} · ${CS.materials[m]} ₽/кг</option>`).join('');
+  sel.innerHTML=h;calcPickSync()}
+function calcPickSync(){const sel=$('calcPick'),name=$('calcColor').value.trim().toLowerCase(),mat=$('calcMat').value;
+  const c=name&&PALC.find(x=>x.name.trim().toLowerCase()===name);
+  if(c){$('calcMat').value=c.material||'PLA';$('calcKg').value=c.kg_price!=null?String(c.kg_price):''}  // the price follows the palette
+  sel.value=c?'c'+c.id:(!PALC.length&&mat&&[...sel.options].some(o=>o.value==='m'+mat)?'m'+mat:'');calcSwatch()}
+function calcSwatch(){const v=$('calcPick').value,c=v[0]==='c'&&PALC.find(x=>'c'+x.id===v);$('calcSw').style.background=c?(c.hex2?`linear-gradient(135deg,${c.hex} 0 50%,${c.hex2} 50% 100%)`:c.hex):'#eee'}
+$('calcPick').addEventListener('change',()=>{const v=$('calcPick').value;
+  if(v[0]==='c'){const c=PALC.find(x=>'c'+x.id===v);$('calcMat').value=c.material||'PLA';$('calcKg').value=c.kg_price!=null?String(c.kg_price):'';$('calcColor').value=c.name}
+  else if(v[0]==='m'){$('calcMat').value=v.slice(1);$('calcKg').value='';$('calcColor').value=''}
+  else{$('calcColor').value=''}
+  calcSwatch();calcUpdate();S.dirty=true});
+async function calcLoadPal(){try{const r=await fetch(SERVER?(S.user&&S.user.admin?'/api/admin/colors':'/api/shop/colors'):'/api/shop/colors');PALC=r.ok?(await r.json()).filter(c=>c.active!==false):[]}catch(e){PALC=[]}calcPickFill()}
+function calcFillMats(){calcPickFill()}
+function calcKgHint(){}
 function calcInput(){return{material:$('calcMat').value,kg_price:$('calcKg').value,grams:$('calcGrams').value,hours:$('calcH').value,minutes:$('calcM').value,pieces:$('calcN').value,
   finish_min:$('calcFinish').value,extras:$('calcExtra').value,markup_pct:$('calcMarkup').value}}
 function calcUpdate(){const i=calcInput(),out=$('calcOut');
@@ -1660,7 +1670,7 @@ function calcUpdate(){const i=calcInput(),out=$('calcOut');
     out.innerHTML='<div class="hint" style="margin:0">Впиши вес и время печати из слайсера (Bambu Studio, Orca, Cura, PrusaSlicer) — посчитаю себестоимость и цену.</div>';return}
   const r=calcLast=calcPrice(i,CS),h=Math.floor(r.t),mm=Math.round((r.t-h)*60);
   out.innerHTML=`<table>
-  <tr><td>🧵 ${esc(i.material||'Пластик')} ${r.g.toFixed(1)} г × ${r.kg} ₽/кг${cnum(i.kg_price,0)>0?' (твоя цена)':''} (+${CS.waste_pct}% отходы)</td><td>${rub(r.plastic)}</td></tr>
+  <tr><td>🧵 ${esc(i.material||'Пластик')}${$('calcColor').value?' «'+esc($('calcColor').value)+'»':''} ${r.g.toFixed(1)} г × ${r.kg} ₽/кг (+${CS.waste_pct}% отходы)</td><td>${rub(r.plastic)}</td></tr>
   <tr><td>⚡ Электричество ${h} ч ${mm} мин</td><td>${rub(r.power)}</td></tr>
   <tr><td>🖨 Износ и обслуживание принтера</td><td>${rub(r.wear)}</td></tr>
   <tr><td>♻️ Запас на брак ${CS.fail_pct}%</td><td>${rub(r.failed)}</td></tr>
@@ -1685,9 +1695,6 @@ async function calcLoadCfg(){let s=null;
 $('calcCfgBtn').onclick=()=>{$('calcCfg').style.display=$('calcCfg').style.display==='block'?'':'block';calcCfgShow()};
 $('calcCfgReset').onclick=()=>{calcCfgShow()};
 $('calcCfgDef').onclick=()=>{const keep=CS;CS=JSON.parse(JSON.stringify(CALC_DEF));calcCfgShow();CS=keep;$('calcCfgNote').textContent='Подставил стандартные параметры. Нажми «💾 Сохранить», чтобы применить, или «Как было», чтобы вернуть свои.'};
-// the colour from the shop palette becomes the product's standard colour (shown first in the shop)
-fetch('/api/shop/colors').then(r=>r.ok?r.json():[]).then(cs=>{if(!cs.length)return;const d=document.createElement('datalist');d.id='calcColorL';
-  d.innerHTML=cs.map(c=>`<option value="${String(c.name).replace(/[&"<>]/g,'')}">`).join('');document.body.appendChild(d);$('calcColor').setAttribute('list','calcColorL')}).catch(()=>{});
 $('calcCfgSave').onclick=async()=>{const s=calcCfgRead();CS=s;try{localStorage.setItem('card3d_calc',JSON.stringify(s))}catch(e){}
   if(calcCanServer()){try{CS=Object.assign(CS,(await api('/api/admin/settings',{method:'PUT',json:{calc:s}})).calc)}catch(e){alert('Не сохранилось: '+e.message)}}
   calcFillMats();calcCfgShow();calcUpdate();$('calcCfg').style.display=''};
@@ -1695,8 +1702,8 @@ $('calcApply').onclick=()=>{if(!calcLast)return;$('price').value=Math.round(calc
   const old=cnum($('old').value,0);if(old&&old<=calcLast.price)$('old').value=niceP(calcLast.price*1.35);
   $('price').dispatchEvent(new Event('input',{bubbles:true}))};
 ['calcMat','calcKg','calcGrams','calcH','calcM','calcN','calcFinish','calcExtra','calcMarkup'].forEach(id=>{$(id).addEventListener('input',calcUpdate);$(id).addEventListener('change',calcUpdate)});
-calcFillMats();calcUpdate();calcLoadCfg();
-window.calcUpdate=calcUpdate;window.calcEnsureMat=calcEnsureMat;window.calcLoadCfg=calcLoadCfg;
+calcFillMats();calcUpdate();calcLoadCfg();calcLoadPal();
+window.calcUpdate=calcUpdate;window.calcEnsureMat=calcEnsureMat;window.calcLoadCfg=calcLoadCfg;window.calcPickSync=calcPickSync;window.calcLoadPal=calcLoadPal;
 
 /* ---------- shop: publish the card, links to the shop and the admin panel ---------- */
 if(SERVER){document.body.classList.add('srv');

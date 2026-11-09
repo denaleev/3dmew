@@ -249,8 +249,8 @@ async function loadReqs(){let r;try{r=await api('/api/admin/requests?status='+A.
     <td class="n">${x.quote_price?rub(x.quote_price):''}</td><td><span class="badge ${x.status}">${esc(x.status_label)}</span></td></tr>`).join(''):'<tr><td colspan="7" class="empty">Заявок нет</td></tr>';
   $('rList').onclick=e=>{const tr=e.target.closest('tr[data-id]');if(tr)openReq(+tr.dataset.id)}}
 async function openReq(id){A.rSel=id;const box=$('rSide');if(!box)return;box.innerHTML='<div class="empty">…</div>';
-  let r,s;try{[r,s]=await Promise.all([api('/api/admin/requests/'+id),A.settings?Promise.resolve(A.settings):api('/api/admin/settings')])}catch(e){box.innerHTML=esc(e.message);return}A.settings=s;
-  const mats=Object.keys(s.calc.materials);
+  let r,s,pal;try{[r,s,pal]=await Promise.all([api('/api/admin/requests/'+id),A.settings?Promise.resolve(A.settings):api('/api/admin/settings'),api('/api/admin/colors')])}catch(e){box.innerHTML=esc(e.message);return}A.settings=s;
+  pal=pal.filter(c=>c.active);const byM={};pal.forEach(c=>{const m=(c.material||'Пластик').trim();(byM[m]=byM[m]||[]).push(c)});
   box.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center"><h2 style="margin:0">Заявка №${r.id}</h2><span class="badge ${r.status}">${esc(r.status_label)}</span></div>
   <div class="mut" style="margin:4px 0 8px">${fdt(r.created_at)}</div>
   <div><b>${esc(r.name)}</b> ${r.phone?`· <a href="tel:${esc(r.phone.replace(/[^\d+]/g,''))}">${esc(r.phone)}</a>`:''} ${r.email?`· <a href="mailto:${esc(r.email)}">${esc(r.email)}</a>`:''}</div>
@@ -258,7 +258,7 @@ async function openReq(id){A.rSel=id;const box=$('rSide');if(!box)return;box.inn
   <div class="mut">${[r.size&&'Размер: '+esc(r.size),r.color&&'Цвет: '+esc(r.color),'Штук: '+r.qty,r.budget&&'Бюджет: '+rub(r.budget)].filter(Boolean).join(' · ')}</div>
   <div class="files" style="margin:10px 0">${r.files.map(f=>`<a class="fl" href="${esc(f.url)}" target="_blank"><div class="th">${f.thumb?`<img src="${esc(f.thumb)}" alt="">`:'🧊'}</div>${esc(f.name.slice(0,40))}<div class="mut">${f.size<1048576?Math.max(1,Math.round(f.size/1024))+' КБ':num(f.size/1048576)+' МБ'}</div></a>`).join('')||'<span class="mut">без файлов</span>'}</div>
   <h2 style="margin:14px 0 8px">🧮 Оценка (на все ${r.qty} шт.)</h2>
-  <div class="row"><label class="f"><span>Тип пластика</span><select id="qMat">${mats.map(m=>`<option>${esc(m)}</option>`).join('')}</select></label><label class="f"><span>Своя цена, ₽/кг</span><input id="qKg" inputmode="decimal" placeholder="из настроек"></label></div><div class="row"><label class="f"><span>Вес, г (всего)</span><input id="qG" inputmode="decimal" value="${r.quote_grams||''}"></label></div>
+  <div class="row"><label class="f" style="flex:2"><span>Пластик и цвет (из раздела «Цвета»)</span><select id="qMat">${Object.keys(byM).map(m=>`<optgroup label="${esc(m)}">${byM[m].map(c=>`<option value="${c.id}">${esc(c.name)}${c.kg_price!=null?' · '+Math.round(c.kg_price)+' ₽/кг':''}</option>`).join('')}</optgroup>`).join('')||'<option value="">палитра пуста</option>'}</select></label><input type="hidden" id="qKg"></div><div class="row"><label class="f"><span>Вес, г (всего)</span><input id="qG" inputmode="decimal" value="${r.quote_grams||''}"></label></div>
   <div class="row"><label class="f"><span>Печать, ч (всего)</span><input id="qH" inputmode="decimal" value="${r.quote_minutes?Math.floor(r.quote_minutes/60):''}"></label><label class="f"><span>мин</span><input id="qM" inputmode="decimal" value="${r.quote_minutes?r.quote_minutes%60:''}"></label></div>
   <div class="row"><label class="f"><span>Моделирование и доработка, мин (всего)</span><input id="qF" inputmode="decimal" value="0"></label><label class="f"><span>Доп. расходы, ₽ (всего)</span><input id="qX" inputmode="decimal" value="0"></label></div>
   <div class="calcres" id="qRes">Впиши вес и время — посчитаю.</div>
@@ -274,10 +274,10 @@ async function openReq(id){A.rSel=id;const box=$('rSide');if(!box)return;box.inn
   let mins=r.quote_minutes||0,grams=r.quote_grams||0;
   const recalc=async()=>{const g=+($('qG').value.replace(',','.'))||0,h=+($('qH').value.replace(',','.'))||0,m=+($('qM').value.replace(',','.'))||0;
     if(!g||!(h+m)){$('qRes').textContent='Впиши вес и время — посчитаю.';return}
-    try{const c=await api('/api/shop/calc',{method:'POST',json:{material:$('qMat').value,kg_price:parseFloat(String($('qKg').value).replace(',','.'))||0,grams:g,hours:h,minutes:m,pieces:1,finish_min:+$('qF').value||0,extras:+$('qX').value||0}});
+    try{const c=await api('/api/shop/calc',{method:'POST',json:{material:(pal.find(c=>c.id===+$('qMat').value)||{}).material||'PLA',kg_price:(pal.find(c=>c.id===+$('qMat').value)||{}).kg_price||0,grams:g,hours:h,minutes:m,pieces:1,finish_min:+$('qF').value||0,extras:+$('qX').value||0}});
       mins=c.print_minutes;grams=c.grams;$('qRes').innerHTML=`Себестоимость <b>${rub(c.cost)}</b> (пластик ${rub(c.plastic)}, принтер ${rub(c.power+c.wear+c.failed)}, работа ${rub(c.labour)}) → рекомендуемая цена <b>${rub(c.price)}</b>, прибыль ${rub(c.profit)} <button class="btn sm" id="qUse">Взять</button>`;
       $('qUse').onclick=()=>{$('qP').value=c.price;$('qC').value=c.cost}}catch(e){$('qRes').textContent=e.message}};
-  ['qMat','qKg','qG','qH','qM','qF','qX'].forEach(i=>$(i).oninput=recalc);recalc();
+  ['qG','qH','qM','qF','qX'].forEach(i=>$(i).oninput=recalc);$('qMat').onchange=recalc;recalc();
   const save=async(st)=>{const body={quote_price:+$('qP').value.replace(',','.')||0,quote_cost:+$('qC').value.replace(',','.')||0,quote_minutes:mins||null,quote_grams:grams||0,quote_text:$('qT').value,admin_note:$('qN').value};
     if(st)body.status=st;try{await api('/api/admin/requests/'+id,{method:'PATCH',json:body});toast('Сохранено');openReq(id);loadReqs();badges()}catch(e){toast(e.message)}};
   box.querySelectorAll('[data-st]').forEach(b=>b.onclick=()=>save(b.dataset.st));$('qSave').onclick=()=>save();
@@ -412,25 +412,30 @@ async function cats(){$('main').innerHTML='<div class="empty">…</div>';let cs;
 /* ---------- filament colours ---------- */
 const swb=c=>c.thumb?`background-image:url('${esc(c.thumb)}')`:(c.hex2?`background:linear-gradient(135deg,${esc(c.hex)} 0 50%,${esc(c.hex2)} 50% 100%)`:`background:${esc(c.hex)}`);
 async function colors(){$('main').innerHTML='<div class="empty">…</div>';let cs;try{cs=await api('/api/admin/colors')}catch(e){return}
+  const MTYPES=[...new Set(['PLA','PLA Matte','Silk PLA','PETG','ABS','TPU'].concat(cs.map(c=>(c.material||'').trim()).filter(Boolean)))];
   const row=c=>`<div class="card col" data-id="${c?c.id:''}" style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-start;margin-bottom:10px">
     <label style="cursor:pointer;text-align:center;font-size:12px;color:var(--muted)"><div class="cph" style="width:96px;height:96px;border-radius:14px;background-size:cover;background-position:center;${c?swb(c).replace(c.thumb||'§',c.photo||c.thumb||''):'background:#f3e8dc'}"></div>📷 фото пластика<input type="file" accept="image/*" data-k="photo" hidden></label>
     <div style="flex:1;min-width:240px"><div class="row"><label class="f"><span>Название цвета</span><input data-k="name" value="${esc(c?c.name:'')}" placeholder="напр. Silk розовый"></label>
-      <label class="f"><span>Материал</span><input data-k="material" value="${esc(c?c.material:'')}" placeholder="PLA, Silk PLA, PETG…"></label></div>
+      <label class="f"><span>Тип пластика</span><select data-k="mtype">${MTYPES.map(m=>`<option ${c&&c.material===m?'selected':''}>${esc(m)}</option>`).join('')}<option value="__own">＋ Свой тип…</option></select>
+        <input data-k="material" class="hide" value="${esc(c?c.material:'')}" placeholder="напр. PLA+ или Wood PLA" style="margin-top:6px"></label></div>
       <div class="row"><label class="f"><span>Цвет</span><input type="color" data-k="hex" value="${esc(c?c.hex:'#e8508a')}" style="height:42px;padding:3px"></label>
       <label class="f"><span>Второй цвет (двухцветный, градиент)</span><div style="display:flex;gap:6px;align-items:center"><input type="checkbox" data-k="two" ${c&&c.hex2?'checked':''} style="width:20px;height:20px;flex:none"><input type="color" data-k="hex2" value="${esc(c&&c.hex2?c.hex2:'#40c4d8')}" style="height:42px;padding:3px;flex:1;min-width:60px"></div></label>
       <label class="f"><span>Порядок</span><input data-k="sort" value="${c?c.sort:0}" inputmode="numeric" style="width:80px"></label></div>
-      <label class="f"><span>Цена пластика, ₽ за кг <small class="mut">(пусто: цена как в калькуляторе, без доплаты)</small></span><input data-k="kg_price" inputmode="decimal" value="${c&&c.kg_price!=null?c.kg_price:''}" placeholder="например: 2400" style="max-width:220px"></label>
+      <label class="f"><span>Цена пластика, ₽ за кг <small class="mut">(по ней калькулятор считает цену товара, если этот цвет стандартный, и доплату за цвет)</small></span><input data-k="kg_price" inputmode="decimal" value="${c&&c.kg_price!=null?c.kg_price:''}" placeholder="например: 2400" style="max-width:220px"></label>
       <label class="f"><span>Примечание (видно покупателю)</span><input data-k="note" value="${esc(c?c.note:'')}" placeholder="напр. переливается на свету"></label>
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><label><input type="checkbox" data-k="active" ${!c||c.active?'checked':''}> Доступен покупателям</label>
       <button class="btn sm pri" data-save>${c?'💾 Сохранить':'＋ Добавить цвет'}</button>${c?`<button class="btn sm danger" data-del>🗑</button><span class="mut">${c.used?'в '+c.used+' товар(ах)':'не используется'}</span>`:''}</div></div></div>`;
   $('main').innerHTML=`<div class="card"><h2>🎨 Палитра цветов</h2><div class="mut">Цвета пластика, из которых покупатель выбирает при заказе. Добавь фото катушки или образца: его видно в карточке товара и на странице <a href="/#palette" target="_blank">«Палитра цветов»</a>. Какие цвета доступны для товара, отмечается при его редактировании на витрине (кнопка «✏️ Изменить»).<br><br>💰 <b>Цена пластика</b>: если у цвета указана своя цена за кг, цена товара в этом цвете пересчитывается по весу изделия (с теми же наценкой, отходами и налогом, что в калькуляторе). Покупатель видит доплату или скидку рядом с каждым цветом.</div></div>
     <h3>Новый цвет</h3>${row(null)}<h3>Палитра (${cs.length})</h3>${cs.map(row).join('')||'<div class="empty">Пока пусто</div>'}`;
   document.querySelectorAll('.col').forEach(el=>{const id=el.dataset.id,g=k=>el.querySelector(`[data-k="${k}"]`);
+    const mt=g('mtype'),own=()=>{g('material').classList.toggle('hide',mt.value!=='__own');if(mt.value!=='__own')g('material').value=mt.value};
+    if(!el.dataset.id&&!g('material').value)g('material').value=mt.value;mt.onchange=()=>{own();if(mt.value==='__own'){g('material').value='';g('material').focus()}};own();
     g('photo').addEventListener('change',e=>{const f=e.target.files[0];if(f)el.querySelector('.cph').style.backgroundImage=`url('${URL.createObjectURL(f)}')`});
     el.querySelector('[data-save]').onclick=async()=>{const fd=new FormData();
       ['name','material','note','sort','kg_price'].forEach(k=>fd.append(k,g(k).value));fd.append('hex',g('hex').value);fd.append('hex2',g('two').checked?g('hex2').value:'');fd.append('active',g('active').checked?'1':'0');
       if(g('photo').files[0])fd.append('photo',g('photo').files[0]);
-      if(!g('name').value.trim())return toast('Назови цвет');
+      if(!g('name').value.trim())return toast('Назови цвет');if(!g('material').value.trim())return toast('Укажи тип пластика');
+      if(!(parseFloat(String(g('kg_price').value).replace(',','.'))>0))return toast('Укажи цену пластика за кг: по ней считается цена');
       try{await api(id?'/api/admin/colors/'+id:'/api/admin/colors',{method:id?'PATCH':'POST',form:fd});toast('Сохранено');colors()}catch(e){toast(e.message)}};
     const d=el.querySelector('[data-del]');if(d)d.onclick=async()=>{if(!confirm('Удалить цвет из палитры? Он пропадёт и из товаров.'))return;await api('/api/admin/colors/'+id,{method:'DELETE'});colors()}})}
 
@@ -453,7 +458,7 @@ async function maxBox(){const box=$('maxBox');let m;try{m=await api('/api/admin/
 
 function setFav(){const t=Date.now();$('favImg').src='/api/shop/favicon/180.png?t='+t;document.querySelectorAll('link[rel=icon]').forEach(l=>l.href='/api/shop/favicon/64.png?t='+t)}
 /* ---------- settings ---------- */
-const CF=[['materials','Пластик, ₽ за 1 кг (строка: название = цена)','ta'],['waste_pct','Отходы пластика, %'],['fail_pct','Брак, %'],['power_w','Мощность принтера, Вт'],['kwh_price','Электричество, ₽/кВт·ч'],
+const CF=[['waste_pct','Отходы пластика, %'],['fail_pct','Брак, %'],['power_w','Мощность принтера, Вт'],['kwh_price','Электричество, ₽/кВт·ч'],
  ['printer_price','Цена принтера, ₽'],['printer_life_h','Ресурс принтера, ч'],['upkeep_per_h','Обслуживание, ₽/ч печати'],['labor_per_h','Ваш труд, ₽/ч'],['setup_min','Подготовка одной печати, мин'],
  ['packaging','Упаковка 1 шт., ₽'],['markup_pct','Наценка, %'],['tax_pct','Налог, %'],['commission_pct','Комиссия (эквайринг, маркетплейс), %'],['printers','Принтеров'],['hours_per_day','Часов работы принтера в сутки']];
 const SF=[['name','Название магазина'],['tagline','Слоган на главной'],['meta_description','Описание для превью ссылки в Telegram, MAX, поиске (пусто = слоган)'],['phone','Телефон'],['email','Почта'],['telegram','Telegram (@ник)'],['max','MAX (ссылка на чат или ник, для контактов внизу сайта)'],['max_link','Ссылка для кнопки «Мы в MAX» на главной (https://…, пусто = кнопки нет)'],['address','Адрес самовывоза'],['min_order','Минимальная сумма заказа, ₽']];
@@ -484,7 +489,7 @@ async function settings(){$('main').innerHTML='<div class="empty">…</div>';let
   $('calcDef').onclick=()=>{if(!confirm('Подставить стандартные параметры калькулятора? Твои значения заменятся в форме, а сохранятся только после «💾 Сохранить настройки».'))return;const d=s.calc_defaults;
     document.querySelectorAll('[data-c]').forEach(el=>{const k=el.dataset.c;el.value=k==='materials'?Object.entries(d.materials).map(([n,p])=>n+' = '+p).join('\n'):d[k]});$('nice').checked=!!d.nice_price;toast('Подставил стандартные. Нажми «Сохранить», чтобы применить')};
   $('favReset').onclick=async()=>{await api('/api/admin/favicon',{method:'DELETE'});setFav();toast('Вернул логотип')};
-  $('sSave').onclick=async()=>{const shop={},calc={nice_price:$('nice').checked};
+  $('sSave').onclick=async()=>{const shop={},calc={nice_price:$('nice').checked,materials:s.calc.materials};  // plastic prices live in «Цвета»
     document.querySelectorAll('[data-s]').forEach(el=>shop[el.dataset.s]=el.value);shop.delivery=[...document.querySelectorAll('[data-dl]:checked')].map(el=>el.dataset.dl);
     document.querySelectorAll('[data-c]').forEach(el=>{const k=el.dataset.c;if(k==='materials'){const m={};el.value.split('\n').forEach(l=>{const[a,b]=l.split(/=|:/);if(a&&a.trim()&&b!=null)m[a.trim()]=+b.replace(',','.')||0});calc.materials=m}else calc[k]=el.value});
     try{A.settings=await api('/api/admin/settings',{method:'PUT',json:{shop,calc}});toast('Настройки сохранены');settings()}catch(e){toast(e.message)}}}
