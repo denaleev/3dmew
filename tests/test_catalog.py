@@ -234,3 +234,16 @@ def test_link_preview_tags():
     assert "Котик «Тест» — 1 290 ₽" in h and f"/api/shop/products/{pub['id']}/image" in h
     assert f"location.replace('/#product/{pub['id']}')" in h
     a.put("/api/admin/settings", json={"shop": {"meta_description": ""}})
+
+
+def test_publish_keeps_weight_and_by_item_lookup():
+    from tests.test_shop import admin_client, publish
+    a = admin_client()
+    iid, pub = publish(a, title="Котик с весом", extra={"calcGrams": "", "calcH": "", "calcM": ""})
+    pid = pub["id"]
+    assert a.patch(f"/api/admin/products/{pid}", json={"grams": 42}).status_code == 200
+    # publishing again from the builder without the calculator keeps the weight
+    assert a.post(f"/api/admin/products/from-item/{iid}").status_code == 200
+    r = a.get(f"/api/admin/products/by-item/{iid}").json()
+    assert r["id"] == pid and r["grams"] == 42
+    assert a.get("/api/admin/products/by-item/nope").status_code == 404

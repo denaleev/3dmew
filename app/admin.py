@@ -113,8 +113,9 @@ def publish_card(item_id: str, db: Session = Depends(get_db), admin: User = Depe
         res = pricing.calc(cin, get_setting(db, "calc"))
         p.calc = {"input": cin, "result": res}
         p.cost, p.print_minutes, p.grams, p.material = Decimal(str(res["cost"])), res["print_minutes"], res["grams"], cin["material"]
-    else:
+    elif new:
         p.calc, p.cost, p.print_minutes, p.grams, p.material = None, None, 0, 0, ""
+    # no calculator in the builder: keep the weight and print time already set for the product (e.g. in «✏️ Изменить»)
     b = db.get(BlobSet, it.id)
     src = b.png if b and b.png else None
     if src is None and it.thumb and it.thumb.startswith("data:image"):
@@ -132,6 +133,15 @@ def publish_card(item_id: str, db: Session = Depends(get_db), admin: User = Depe
     db.add(p)
     db.commit()
     return {"id": p.id, "new": new, "cost": f(p.cost), "print_minutes": p.print_minutes, "url": f"/#product/{p.id}"}
+
+
+@router.get("/products/by-item/{item_id}")
+def product_by_item(item_id: str, db: Session = Depends(get_db), _: User = Depends(current_admin)):
+    """The shop product made from a builder card (to show «Сохранить изменения» and fill in the weight)."""
+    p = db.execute(select(Product).where(Product.item_id == item_id)).scalar_one_or_none()
+    if not p:
+        raise HTTPException(404, "Карточка ещё не опубликована")
+    return {"id": p.id, "grams": f(p.grams), "print_minutes": p.print_minutes, "url": f"/#product/{p.id}"}
 
 
 @router.get("/products")

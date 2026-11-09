@@ -1612,7 +1612,7 @@ async function openItem(id){const rec=await dbGet('items',id),b=await dbGet('blo
   S.cardId=rec.kind==='card'?id:null;S.draftId=rec.kind==='draft'?id:null;renderCard();S.busyOpen=true;goTab('text');setWork('');
   if(S.fixed){S.busyOpen=false;if(b.photo){$('thumbImg').src=URL.createObjectURL(b.photo);drop.classList.add('has');$('dropTitle').textContent='Заменить фото'}}
   else if(b&&b.photo){const manual=b.manual?new Int8Array(await b.manual.arrayBuffer()):null;S.photoSaved=true;S.busyOpen=true;loadFile(b.photo,{fromLib:true,keepIds:true,manual,noProcess:!!S.product})}
-  S.dirty=false;filesRefresh();saveState((rec.kind==='card'?'Открыта карточка «':'Открыт черновик «')+rec.title+'»')}
+  S.dirty=false;filesRefresh();saveState((rec.kind==='card'?'Открыта карточка «':'Открыт черновик «')+rec.title+'»');window.pubCheck&&pubCheck()}
 
 /* ---------- cost & price calculator (same formula as app/pricing.py on the server) ---------- */
 const CALC_DEF={materials:{'PLA':1600,'PLA Matte':1800,'Silk PLA':2000,'PETG':1700,'ABS':1600,'TPU':2600},waste_pct:5,power_w:150,kwh_price:6.5,
@@ -1694,9 +1694,16 @@ if(SERVER){document.body.classList.add('srv');
     if(!S.product&&!S.photoBlob&&!S.fixed){goTab('photo');return saveState('⚠️ Сначала загрузи фото изделия: без него на витрину попадёт пустая карточка')}
     await saveCard('card');if(!S.cardId||S.dirty)return;
     saveState('⏳ Публикую в магазине…');
-    try{const r=await api('/api/admin/products/from-item/'+S.cardId,{method:'POST'});
-      $('saveState').innerHTML='';const a=document.createElement('a');a.href=r.url;a.target='_blank';a.textContent=(r.new?'✓ Опубликовано в магазине':'✓ Обновлено в магазине')+' → открыть';$('saveState').appendChild(a);shopCats()}
-    catch(e){saveState('⚠️ Не опубликовалось: '+e.message)}}}
+    try{const r=await api('/api/admin/products/from-item/'+S.cardId,{method:'POST'});S.pub={id:r.id,url:r.url};$('pubShop').textContent='💾 Сохранить изменения в магазине';$('dl2').textContent='💾 Сохранить изменения в магазине';
+      $('saveState').innerHTML='';const a=document.createElement('a');a.href=r.url;a.target='_blank';a.textContent=(r.new?'✓ Опубликовано в магазине':'✓ Изменения сохранены в магазине')+' → открыть';$('saveState').appendChild(a);shopCats()}
+    catch(e){saveState('⚠️ Не опубликовалось: '+e.message)}};
+  // a card that is already in the shop: «Сохранить изменения» saves it and updates the product; the weight comes from the product if the calculator is empty
+  window.pubCheck=async()=>{S.pub=null;$('pubShop').textContent='🛒 Опубликовать на витрине';$('dl2').textContent='🛒 Опубликовать на витрине';
+    if(!S.cardId||!S.user||!S.user.admin)return;const id=S.cardId;
+    try{const r=await api('/api/admin/products/by-item/'+encodeURIComponent(id));if(S.cardId!==id)return;S.pub=r;
+      $('pubShop').textContent='💾 Сохранить изменения в магазине';$('dl2').textContent='💾 Сохранить изменения в магазине';
+      if(!$('calcGrams').value.trim()&&r.grams){$('calcGrams').value=String(r.grams).replace('.',',');window.calcUpdate&&calcUpdate()}}catch(e){}};
+  if(S.cardId)pubCheck()}
 
 /* ---------- print files (3MF/STL/G-code) kept with a card, only for its author ---------- */
 const FEXT=/\.(3mf|stl|obj|step|stp|gcode|bgcode|gco|zip)$/i;
