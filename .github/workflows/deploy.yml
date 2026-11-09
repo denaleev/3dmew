@@ -54,7 +54,7 @@ jobs:
           HOST: ${{ secrets.DEPLOY_HOST }}
         run: |
           if [ -z "$KEY" ] || [ -z "$HOST" ]; then echo "::warning::Секреты DEPLOY_SSH_KEY и DEPLOY_HOST не заданы, установка на сервер пропущена"; exit 0; fi
-          HOST=$(printf '%s' "$HOST" | tr -d '[:space:]')
+          HOST=$(printf '%s' "$HOST" | tr -d '[:space:]'); HOST=${HOST##*:}  # tolerate "DEPLOY_HOST:1.2.3.4"
           mkdir -p ~/.ssh
           printf '%s\n' "$KEY" | tr -d '\r' > ~/.ssh/id_deploy && chmod 600 ~/.ssh/id_deploy
           ssh-keygen -y -f ~/.ssh/id_deploy > /dev/null || { echo "::error::DEPLOY_SSH_KEY не похож на ключ: скопируй вывод cat /root/.ssh/github_deploy целиком, со строками BEGIN и END"; exit 1; }
