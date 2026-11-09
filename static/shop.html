@@ -455,14 +455,14 @@ async function openProduct(id){const box=$('pBox');$('pOv').classList.add('on');
   const ready=p.stock>0?`✓ В наличии: ${p.stock} шт.`:`🖨 Печатаем под заказ${p.print_minutes?' · печать ≈ '+(Math.max(1,Math.round(p.print_minutes/60)))+' ч':''}`;
   S.cur=p;const media=[{kind:'image',url:p.image,thumb:p.thumb}].concat(p.media||[]);
   box.innerHTML=`<button class="x" data-close>✕</button>
-    ${isAdm()?`<div class="adm"><b>Админ:</b><button class="btn sm" id="aEdit">✏️ Изменить</button><button class="btn sm" id="aHide">${p.published?'🙈 Скрыть':'👁 Показать'}</button>
-      <button class="btn sm" id="aDel">🗑 Удалить</button><button class="btn sm" id="aMax" title="Отправить карточку в группу MAX">📣 В MAX</button>${p.item_id?`<a class="btn sm" href="/builder#card=${esc(p.item_id)}">🎨 В конструкторе</a>`:''}
+    ${isAdm()?`<div class="adm"><b>Админ:</b><button class="btn sm" id="aHide">${p.published?'🙈 Скрыть':'👁 Показать'}</button>
+      <button class="btn sm" id="aDel">🗑 Удалить</button>${p.item_id?`<a class="btn sm" href="/builder#card=${esc(p.item_id)}">🎨 В конструкторе</a>`:''}
       ${p.published?'':'<span style="color:#b45309;font-weight:700">Скрыт: покупатели его не видят</span>'}</div>`:''}
     <div class="pv"><div class="gal"><div class="main" id="gMain"></div>
       ${media.length>1?`<div class="ths">${media.map((m,i)=>`<button data-m="${i}" class="${m.kind==='video'?'vid':''}">${m.kind==='video'?(m.thumb?`<img src="${esc(m.thumb)}" alt="">`:'🎬'):`<img src="${esc(m.thumb||m.url)}" alt="">`}</button>`).join('')}</div>`:''}</div><div>
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;${isAdm()?'':'padding-right:48px'}">${p.category?`<span class="badge">${esc(p.category)}</span>`:''}${p.reviews?`<a href="#" id="toRev" style="text-decoration:none">${stars(p.rating,p.reviews)}</a>`:''}<span style="flex:1"></span><button class="btn sm favb ${isFav(p.id)?'on':''}" id="pFav">${isFav(p.id)?'♥ В избранном':'♡ В избранное'}</button></div><h2>${esc(p.title)}</h2>
     <div><span class="price" style="font-size:26px" id="pPrice">${p.color_list.some(c=>c.delta)?'от '+rub(Math.min(p.price,...p.color_list.map(c=>c.price))):rub(p.price)}</span>${p.old_price?`<span class="old">${rub(p.old_price)}</span>`:''}</div>
-    <div class="pdelta" id="pDelta"></div>${isAdm()&&p.color_list.length&&!p.priced_colors?'<div class="pdelta" style="color:#b45309">⚠️ Админу: у товара не указан вес, поэтому доплата за цвет не считается. «✏️ Изменить» → «Вес изделия, г».</div>':''}<div style="color:${p.stock>0?'var(--ok)':'var(--muted)'};font-weight:600;margin:6px 0 10px">${ready}</div>
+    <div class="pdelta" id="pDelta"></div>${isAdm()&&p.color_list.length&&!p.priced_colors?'<div class="pdelta" style="color:#b45309">⚠️ Админу: у товара не указан вес, поэтому доплата за цвет не считается. Открой «🎨 В конструкторе», впиши «Вес из слайсера, г» и нажми «💾 Сохранить изменения в магазине».</div>':''}<div style="color:${p.stock>0?'var(--ok)':'var(--muted)'};font-weight:600;margin:6px 0 10px">${ready}</div>
     <p style="white-space:pre-line">${esc(p.description)}</p>
     ${p.features.length?`<table class="feats">${p.features.map(f=>`<tr><td>${esc(f.k)}</td><td>${esc(f.v)}</td></tr>`).join('')}</table>`:''}
     ${p.color_list.length?`<div style="font-weight:800;font-size:13px;color:#5e4a5c;margin-bottom:2px">Цвет *</div><div class="pick" id="pPick">${p.color_list.slice(0,CMAX).map(c=>`<button class="pk" data-c="${c.id}" ${c.mark==='default'?'title="Стандартный цвет этой модели"':c.mark==='popular'?'title="Часто выбирают"':''}><i style="${swBg(c)}"></i>${esc(c.name)}${c.mark==='default'?'<small class="std">стандарт</small>':''}${dTag(c,p)}</button>`).join('')}
@@ -511,9 +511,7 @@ async function openProduct(id){const box=$('pBox');$('pOv').classList.add('on');
   $('pAdd').onclick=()=>{if(multi&&multi.length<2){toast('Отметь хотя бы 2 цвета');$('pPick').scrollIntoView({block:'center',behavior:'smooth'});return}
     if(p.color_list.length&&!col&&!multi){toast('Выбери цвет');$('pPick').scrollIntoView({block:'center',behavior:'smooth'});return}
     addToCart(p,q(),$('pNote').value.trim(),sel(),multi?'Добавлено. Цену в нескольких цветах подтвердит мастер':'')};
-  if(isAdm()){$('aEdit').onclick=()=>editProduct(p.id);
-    $('aMax').onclick=async()=>{if(!confirm('Опубликовать «'+p.title+'» в группе MAX?'))return;const b=$('aMax');b.disabled=true;b.textContent='⏳ Отправляю…';
-      try{await api('/api/admin/max/post/'+p.id,{method:'POST'});b.textContent='✓ Опубликовано в MAX';toast('Карточка отправлена в группу MAX')}catch(e){b.disabled=false;b.textContent='📣 В MAX';alert(e.message)}};
+  if(isAdm()){
     $('aHide').onclick=async()=>{try{await api('/api/admin/products/'+p.id,{method:'PATCH',json:{published:!p.published}});toast(p.published?'Товар скрыт':'Товар снова на витрине');openProduct(p.id);loadProducts()}catch(e){toast(e.message)}};
     $('aDel').onclick=async()=>{if(!confirm('Удалить «'+p.title+'» из магазина? Это нельзя отменить. Карточка в библиотеке конструктора останется.'))return;
       try{await api('/api/admin/products/'+p.id,{method:'DELETE'});toast('Товар удалён');closeProduct();loadProducts()}catch(e){toast(e.message)}}}}
@@ -654,55 +652,6 @@ async function requestPage(id,token){const v=$('view'),fresh=location.hash.endsW
   if($('qGo'))$('qGo').onclick=async()=>{try{const o=await api(`/api/shop/requests/${id}/accept?token=${encodeURIComponent(token)}`,{method:'POST',json:{delivery:document.querySelector('[name=dl]:checked').value,address:$('qAddr').value}});
     remember('order',o.id,o.token);location.hash=`#order/${o.id}/${o.token}/new`}catch(e){$('qErr').textContent=e.message}}}
 
-
-/* ---------- admin: edit a product right from the shop ---------- */
-async function newProduct(){const t=prompt('Название нового товара');if(!t||!t.trim())return;const pr=prompt('Цена, ₽');const price=parseFloat(String(pr||'').replace(',','.'));
-  if(!(price>0))return toast('Нужна цена');
-  try{const r=await api('/api/admin/products',{method:'POST',json:{title:t.trim(),price,category:S.cat||'',published:false}});S.showHidden=true;await loadProducts();
-    $('pOv').classList.add('on');document.body.classList.add('ovopen');editProduct(r.id)}catch(e){toast(e.message)}}
-async function editProduct(id){const box=$('pBox');box.innerHTML='<div class="empty">Загружаю…</div>';
-  let p,cols=[],cl=[];try{[p,cols,cl]=await Promise.all([api('/api/shop/products/'+id),api('/api/admin/colors'),api('/api/admin/categories').catch(()=>S.cats)])}catch(e){box.innerHTML='<div class="empty">'+esc(e.message)+'</div>';return}
-  const catOpts=cl.map(c=>`<option value="${esc(c.name)}">`).join('');
-  const draw=()=>{const media=p.media||[];
-  box.innerHTML=`<button class="x" data-close>✕</button><div class="ed"><h2 style="margin:0 44px 12px 0">✏️ ${esc(p.title)}</h2>
-    <div class="row"><label class="f"><span>Название</span><input id="eT" maxlength="300" value="${esc(p.title)}"></label>
-      <label class="f"><span>Группа (категория)</span><input id="eC" maxlength="80" list="eCats" value="${esc(p.category||'')}" placeholder="например: Котики"><datalist id="eCats">${catOpts}</datalist></label></div>
-    <div class="row"><label class="f"><span>Цена, ₽</span><input id="eP" inputmode="decimal" value="${p.price}"></label>
-      <label class="f"><span>Старая цена (для скидки)</span><input id="eO" inputmode="decimal" value="${p.old_price||''}"></label>
-      <label class="f"><span>В наличии, шт. (0 = под заказ)</span><input id="eS" inputmode="numeric" value="${p.stock||0}"></label>
-      <label class="f"><span>Вес изделия, г <small style="color:var(--muted)">(для цены по цвету)</small></span><input id="eG" inputmode="decimal" value="${p.grams||''}" placeholder="например: 40"></label></div>
-    <p class="fine" style="margin:-4px 0 12px">Цена указана для пластика ${Math.round(p.base_kg_price||0)} ₽/кг. Если у цвета в палитре своя цена за кг, покупатель увидит доплату или скидку: она считается по весу изделия.</p>
-    <label class="f"><span>Описание</span><textarea id="eD" rows="3" maxlength="5000">${esc(p.description||'')}</textarea></label>
-    <label class="f"><span>Характеристики: по одной в строке, «Название: значение»</span><textarea id="eF" rows="4" maxlength="5000" placeholder="Материал: PLA&#10;Размер: 10 см">${esc(p.features_raw||'')}</textarea></label>
-    <div style="font-weight:800;font-size:13px;color:#5e4a5c;margin-bottom:6px">Цвета, из которых покупатель выбирает ${cols.length?'':'(палитра пуста: добавь цвета в <a href="/admin#colors" target="_blank">админке → Цвета</a>)'}</div>
-    <div class="cg">${cols.map(c=>`<label title="${esc(c.material)}"><input type="checkbox" data-ec="${c.id}" ${p.colors.includes(c.id)?'checked':''}><i style="${swBg(c)}"></i>${esc(c.name)}${c.active?'':' (скрыт)'}</label>`).join('')}</div>
-    <label style="display:flex;gap:8px;align-items:center;font-weight:700;margin-bottom:14px"><input type="checkbox" id="ePub" ${p.published?'checked':''} style="width:18px;height:18px;accent-color:var(--acc)"> Показывать на витрине</label>
-    <div style="font-weight:800;font-size:13px;color:#5e4a5c;margin-bottom:6px">Фото и видео <small style="font-weight:600;color:var(--muted)">(первое — главное, его видно в каталоге)</small></div>
-    <div class="mrow" id="eM"><div class="mi"><div class="th"><img src="${esc(p.image)}" alt=""></div>⭐ главное</div>
-      ${media.map((m,i)=>`<div class="mi"><div class="th">${m.kind==='video'?'🎬':`<img src="${esc(m.thumb||m.url)}" alt="">`}</div>
-        <div class="acts">${i?`<button data-mv="${i}" data-d="-1" title="Левее">←</button>`:''}${i<media.length-1?`<button data-mv="${i}" data-d="1" title="Правее">→</button>`:''}${m.kind==='image'?`<button data-main="${m.id}" title="Сделать главным">⭐</button>`:''}<button data-del="${m.id}" title="Удалить">🗑</button></div></div>`).join('')}</div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px"><button class="btn sm" id="eAdd">📷 Добавить фото или видео</button><button class="btn sm" id="eMainF">🖼 Заменить главное фото</button><span id="eUp" style="font-size:13px;color:var(--muted);align-self:center"></span></div>
-    <input type="file" id="eFile" multiple hidden accept="image/*,video/mp4,video/quicktime,video/webm,.mp4,.mov,.webm"><input type="file" id="eMainFile" hidden accept="image/*">
-    <div class="err" id="eErr"></div>
-    <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn pri big" id="eSave" style="flex:1">💾 Сохранить</button><button class="btn big" id="eBack">Отмена</button></div></div>`;
-  const reload=async()=>{p=await api('/api/shop/products/'+id);draw()};
-  $('eBack').onclick=()=>openProduct(id);
-  $('eAdd').onclick=()=>$('eFile').click();$('eMainF').onclick=()=>$('eMainFile').click();
-  $('eFile').addEventListener('change',async e=>{const fs=[...e.target.files];if(!fs.length)return;const fd=new FormData();fs.forEach(f=>fd.append('files',f,f.name));
-    $('eUp').textContent='⏳ Загружаю '+fs.length+' файл(ов)…';try{await api('/api/admin/products/'+id+'/media',{method:'POST',form:fd});await reload();toast('Добавлено')}catch(er){$('eUp').textContent='';toast(er.message)}});
-  $('eMainFile').addEventListener('change',async e=>{const f=e.target.files[0];if(!f)return;const fd=new FormData();fd.append('file',f,f.name);
-    try{await api('/api/admin/products/'+id+'/image',{method:'PUT',form:fd});await reload();toast('Главное фото заменено')}catch(er){toast(er.message)}});
-  $('eM').onclick=async e=>{const b=e.target.closest('button');if(!b)return;
-    try{if(b.dataset.del){if(!confirm('Удалить этот файл?'))return;await api(`/api/admin/products/${id}/media/${b.dataset.del}`,{method:'DELETE'})}
-      else if(b.dataset.main){await api(`/api/admin/products/${id}/media/${b.dataset.main}/main`,{method:'POST'})}
-      else if(b.dataset.mv){const ids=media.map(m=>m.id),i=+b.dataset.mv,j=i+ +b.dataset.d;[ids[i],ids[j]]=[ids[j],ids[i]];await api(`/api/admin/products/${id}/media`,{method:'PUT',json:{ids}})}
-      await reload()}catch(er){toast(er.message)}};
-  $('eSave').onclick=async()=>{const num=v=>parseFloat(String(v).replace(',','.').replace(/\s/g,''));
-    const body={title:$('eT').value.trim(),category:$('eC').value.trim(),price:num($('eP').value),old_price:num($('eO').value)||0,stock:Math.max(0,parseInt($('eS').value)||0),
-      description:$('eD').value,features:$('eF').value,published:$('ePub').checked,grams:Math.max(0,num($('eG').value)||0),colors:[...box.querySelectorAll('[data-ec]:checked')].map(x=>+x.dataset.ec)};
-    if(!body.title)return $('eErr').textContent='Нужно название';if(!(body.price>0))return $('eErr').textContent='Нужна цена';
-    try{await api('/api/admin/products/'+id,{method:'PATCH',json:body});toast('Сохранено');loadProducts();openProduct(id)}catch(er){$('eErr').textContent=er.message}}};
-  draw()}
 
 /* ---------- about, palette, feedback ---------- */
 function richText(t){const out=[];let ul=null;for(const raw of String(t||'').split('\n')){const l=raw.trim();
