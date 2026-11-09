@@ -1,0 +1,19 @@
+[Unit]
+Description=Конструктор карточек (FastAPI)
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+User=kartochki
+Group=kartochki
+WorkingDirectory=/opt/kartochki
+EnvironmentFile=/opt/kartochki/.env
+ExecStart=/opt/kartochki/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 --proxy-headers --forwarded-allow-ips=127.0.0.1
+Restart=always
+RestartSec=3
+NoNewPrivileges=true
+ProtectSystem=full
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

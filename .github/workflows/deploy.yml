@@ -1,0 +1,61 @@
+# Every push to main: run the tests, then install the new version on the server.
+# Secrets (Settings → Secrets and variables → Actions):
+#   DEPLOY_SSH_KEY  private key that may log in as root on the server
+#   DEPLOY_HOST     server address, e.g. 31.31.207.71
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: cards
+          POSTGRES_PASSWORD: cards
+          POSTGRES_DB: cards_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U cards" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql+psycopg://cards:cards@127.0.0.1:5432/cards_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -r requirements.txt pytest
+      - run: alembic upgrade head
+      - run: python -m pytest -q tests --deselect tests/test_api.py::test_recognition_fill_without_claude
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Pack
+        run: |
+          mkdir -p pkg/server
+          git archive HEAD | tar -x -C pkg/server
+          (cd pkg && zip -qr ../kartochki-server.zip server)
+      - name: Upload and install
+        env:
+          KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          HOST: ${{ secrets.DEPLOY_HOST }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$KEY" > ~/.ssh/id_deploy && chmod 600 ~/.ssh/id_deploy
+          ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts 2>/dev/null
+          SSH="ssh -i ~/.ssh/id_deploy root@$HOST"
+          scp -i ~/.ssh/id_deploy kartochki-server.zip "root@$HOST:/root/kartochki-server.zip"
+          $SSH "rm -rf /tmp/kupd && unzip -q -o /root/kartochki-server.zip server/scripts/update.sh -d /tmp/kupd && bash /tmp/kupd/server/scripts/update.sh /root/kartochki-server.zip; s=\$?; rm -rf /tmp/kupd; exit \$s"
