@@ -369,3 +369,27 @@ class LibraryFile(Base):
     width: Mapped[int] = mapped_column(Integer, default=0)
     height: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
+
+
+class GamePlayer(Base):
+    """A player of «Мяу-аркада»: the account if signed in, otherwise a random token kept in the browser.
+
+    Only the nickname the player typed (optional, for the leaderboard) and game progress are kept."""
+    __tablename__ = "game_players"
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    user_id: Mapped[Optional[str]] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), unique=True)
+    token_hash: Mapped[Optional[str]] = mapped_column(String(64), unique=True)  # SHA-256 of the browser's token
+    nick: Mapped[str] = mapped_column(String(20), default="", server_default="")  # empty = not on the leaderboard
+    data: Mapped[dict] = mapped_column(JSONB, default=dict)  # records, levels, stars… (the browser's «mya.*» keys)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+class GameScore(Base):
+    """The best result of a player in one game mode: rows of the leaderboard."""
+    __tablename__ = "game_scores"
+    player_id: Mapped[int] = mapped_column(ForeignKey("game_players.id", ondelete="CASCADE"), primary_key=True)
+    game: Mapped[str] = mapped_column(String(20), primary_key=True)
+    mode: Mapped[str] = mapped_column(String(20), primary_key=True)
+    score: Mapped[int] = mapped_column(Integer)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

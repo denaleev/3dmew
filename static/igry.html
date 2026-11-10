@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <title>Мяу-аркада — 3DМяу</title>
-<meta name="description" content="Мини-игры с котиком 3DМяу для детей и подростков: без рекламы, покупок и регистрации.">
+<meta name="description" content="Мини-игры с котиком 3DМяу для детей и подростков: без рекламы и покупок, с турнирной таблицей.">
 <link rel="icon" type="image/png" href="/api/shop/favicon/64.png">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Rubik:wght@600;800;900&display=swap" rel="stylesheet">
 <style>
@@ -70,6 +70,17 @@ button{font:inherit;color:inherit;cursor:pointer}
 .box .cat{width:96px;height:96px}
 .box .row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
 .box .play.alt{background:#fff;color:var(--ink);text-shadow:none}
+/* турнир */
+.lbov{position:fixed;inset:0;z-index:15;background:#2b0a3dcc;display:grid;place-items:center;padding:12px}
+.lbov .box{max-width:520px;max-height:calc(100vh - 24px)}
+.lbtop{display:flex;gap:8px;align-items:center;width:100%}.lbtop h2{flex:1}
+.lbnick{display:flex;gap:6px;width:100%}.lbnick input{flex:1;min-width:0;font:inherit;font-weight:800;font-size:16px;border:3px solid var(--ink);border-radius:14px;padding:6px 10px}
+.lbnick button{border:3px solid var(--ink);border-radius:14px;background:var(--yl);font-weight:900;padding:0 12px;box-shadow:0 3px 0 var(--ink)}
+.lbl{width:100%;display:flex;flex-direction:column;gap:5px}
+.lbr{display:flex;gap:8px;align-items:center;background:#fff;border:3px solid var(--ink);border-radius:14px;padding:5px 10px;font-weight:800;text-align:left}
+.lbr.me{background:var(--yl)}.lbr .pl{width:32px;font-weight:900}.lbr .nk{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.lbr .sc{font-weight:900}
+.lbr .x{border:0;background:none;font-size:15px;padding:0 2px}
+.lbnote{font-size:13px!important;opacity:.85}
 .toast{position:fixed;left:50%;top:76px;transform:translateX(-50%);z-index:20;background:var(--yl);border:3px solid var(--ink);box-shadow:0 4px 0 var(--ink);border-radius:18px;padding:8px 16px;font-weight:900;text-align:center;max-width:90vw}
 </style>
 </head>
@@ -84,11 +95,14 @@ button{font:inherit;color:inherit;cursor:pointer}
         <button class="sq" id="mute" title="Звук" aria-label="Звук" style="width:40px;height:40px;font-size:18px">🔊</button>
       </div>
       <div class="pill daily" id="daily"></div>
+      <button class="pill" id="lbOpen" style="background:var(--cy)">🏆 Турнирная таблица</button>
     </div>
   </div>
   <div class="cards" id="cards"></div>
-  <div class="foot">Без рекламы, покупок и регистрации · Рекорды хранятся только на этом устройстве · Через 20 минут игры котик предложит передышку<br><a href="/">← Вернуться в магазин 3DМяу</a></div>
+  <div class="foot">Без рекламы и покупок · Рекорды сохраняются на сервере<span id="acct"></span> · В турнирной таблице видно только ник, который ты придумаешь сам · Через 20 минут игры котик предложит передышку<br><a href="/">← Вернуться в магазин 3DМяу</a></div>
 </div>
+
+<div class="lbov hide" id="lb"><div class="box" id="lbBox"></div></div>
 
 <div class="game hide" id="game">
   <div class="hud">
@@ -223,10 +237,21 @@ function showStart() {
     <p id="mDesc">${G.modes.find(m => m.id === mode).desc}</p>
     <button class="play" id="go">▶ Играть</button>
     <p>🏆 Рекорд: <b>${rec}</b></p>
+    <p id="place" class="lbnote"></p><button class="chip" id="lbHere">🏅 Турнирная таблица</button>
     ${G.extra ? G.extra(mode) : ''}
     <p style="font-size:13px;opacity:.8">${G.hint}</p>`);
   $('box').querySelectorAll('[data-m]').forEach(b => b.onclick = () => { mode = b.dataset.m; Mya.store.set('mode.' + G.id, mode); showStart(); });
   $('go').onclick = start;
+  $('lbHere').onclick = () => openBoard(G.id, boardMode(G.id, mode));
+  showPlace(G.id, mode);
+}
+// место игрока в турнире под рекордом
+async function showPlace(id, m) {
+  const el = $('place'); if (!el || Mya.cloud.off) return;
+  try {
+    const t = await Mya.cloud.top(id, boardMode(id, m), 1); if ($('place') !== el) return;
+    el.innerHTML = t.me ? `Место в турнире: <b>${t.me.place}</b>${t.total ? ' из ' + Math.max(t.total, t.me.place) : ''}${t.me.listed ? '' : ' · придумай ник, чтобы попасть в таблицу'}` : '';
+  } catch (e) { /* без сети: просто не показываем */ }
 }
 function start() {
   $('panel').classList.add('hide'); inst.reset(mode); inst.start && inst.start(); state = 'play'; last = performance.now(); loop(last);
@@ -244,9 +269,10 @@ function showOver(o) {
     <h2 class="title">${o.title || 'ИГРА ОКОНЧЕНА'}</h2>
     ${o.big != null ? `<div class="big">${o.big}</div>` : ''}
     ${better ? '<div class="pill" style="background:#9dff4a">🏆 Новый рекорд!</div>' : ''}
-    <p>${o.text || ''}</p>
+    <p>${o.text || ''}</p><p id="place" class="lbnote"></p>
     <div class="row">${o.next ? '<button class="play" id="nxt">▶ Дальше</button>' : ''}<button class="play ${o.next ? 'alt' : ''}" id="again">↺ ${o.again || 'Ещё раз'}</button><button class="play alt" id="men">☰ Меню</button></div>`);
   $('again').onclick = start; $('men').onclick = showStart;
+  if (better) Mya.cloud.sync(false).then(() => showPlace(G.id, mode)); else showPlace(G.id, mode);
   if (o.next) $('nxt').onclick = () => { o.next(); start(); };
 }
 function breakTime() {
@@ -273,6 +299,7 @@ document.addEventListener('visibilitychange', () => { if (document.hidden) pause
 
 const ARROWS = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', ' '];
 window.addEventListener('keydown', e => {
+  if (!$('lb').classList.contains('hide')) { if (e.key === 'Escape') closeBoard(); return; }
   if (!inst) return;
   if (e.key === 'Escape' || e.key === 'p' || e.key === 'з') { state === 'play' ? pause() : state === 'pause' && resume(); return; }
   if (state === 'menu' && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); start(); return; }
@@ -293,9 +320,62 @@ $('ctl').addEventListener('pointerdown', e => {
 const release = e => { const h = held.get(e.pointerId); if (!h) return; clearTimeout(h.t); held.delete(e.pointerId); if (inst) inst.key(h.k, false); };
 ['pointerup', 'pointercancel', 'pointerleave'].forEach(t => $('ctl').addEventListener(t, release));
 
+// ---------- турнирная таблица ----------
+const BOARD_MODES = {bridge: [{id: 'stars', name: 'Звёзды'}], pixel: [{id: 'all', name: 'Картины'}]};
+const boardModes = id => BOARD_MODES[id] || Mya.games[id].modes;
+const boardMode = (id, m) => (BOARD_MODES[id] ? BOARD_MODES[id][0].id : m);
+const clock = ms => { const s = ms / 1000; return `${Math.floor(s / 60)}:${(s % 60).toFixed(1).padStart(4, '0')}`; };
+const num = v => Number(v).toLocaleString('ru-RU');
+function fmtScore(id, m, v) {
+  if ((id === 'blocks' && m === 'sprint') || id === 'mem') return clock(v);
+  if (id === 'snake' && m === 'levels') return `Мир ${Math.floor((v - 1) / 4) + 1}-${(v - 1) % 4 + 1}`;
+  return ({run: num(v) + ' м', stack: v + ' слоёв', sort: 'ур. ' + v, snake: 'длина ' + v, bridge: v + ' ⭐', pixel: v + ' 🖼'})[id] || num(v);
+}
+const LB = {game: 'blocks', mode: 'marathon'};
+function openBoard(id, m) {
+  LB.game = id || LB.game; LB.mode = m || boardModes(LB.game)[0].id;
+  if (state === 'play') pause();
+  $('lb').classList.remove('hide'); drawBoard();
+}
+function closeBoard() { $('lb').classList.add('hide'); }
+async function drawBoard() {
+  const me = Mya.cloud.info, box = $('lbBox');
+  box.innerHTML = `<div class="lbtop"><h2 class="title">ТУРНИР</h2><button class="sq" id="lbX" aria-label="Закрыть">✕</button></div>
+    <div class="lbnick"><input id="lbNick" maxlength="16" placeholder="Твой ник для таблицы" value="${esc(me.nick)}"><button id="lbSave">OK</button></div>
+    <p class="lbnote">Придумай ник: не пиши настоящее имя и фамилию. Без ника твои рекорды сохраняются, но в таблице не видны.</p>
+    <div class="modes">${ORDER.map(id => `<button class="chip ${id === LB.game ? 'on' : ''}" data-lg="${id}">${esc(Mya.games[id].title)}</button>`).join('')}</div>
+    <div class="modes">${boardModes(LB.game).map(x => `<button class="chip ${x.id === LB.mode ? 'on' : ''}" data-lm="${x.id}">${esc(x.name)}</button>`).join('')}</div>
+    <div class="lbl" id="lbList"><p>Загружаю…</p></div>
+    <p class="lbnote">${me.signed_in ? `Ты вошёл как «${esc(me.name)}»: рекорды видны на всех твоих устройствах.` : 'Рекорды привязаны к этому браузеру. <a href="/#account">Войди в аккаунт магазина</a>, чтобы они были на всех устройствах.'}</p>`;
+  $('lbX').onclick = closeBoard;
+  $('lbSave').onclick = async () => { try { const n = await Mya.cloud.setNick($('lbNick').value); toast(n ? `Ник «${n}» сохранён` : 'Ник убран: тебя не видно в таблице'); drawBoard(); } catch (e) { toast(e.message); } };
+  $('lbNick').onkeydown = e => { if (e.key === 'Enter') $('lbSave').click(); };
+  box.querySelectorAll('[data-lg]').forEach(b => b.onclick = () => { LB.game = b.dataset.lg; LB.mode = boardModes(LB.game)[0].id; drawBoard(); });
+  box.querySelectorAll('[data-lm]').forEach(b => b.onclick = () => { LB.mode = b.dataset.lm; drawBoard(); });
+  let t; try { t = await Mya.cloud.top(LB.game, LB.mode, 20); } catch (e) { $('lbList').innerHTML = `<p>Не получилось загрузить таблицу: ${esc(e.message)}</p>`; return; }
+  if (!$('lbList')) return;
+  const medal = n => ['🥇', '🥈', '🥉'][n - 1] || n;
+  $('lbList').innerHTML = (t.items.length ? t.items.map(r => `<div class="lbr ${r.me ? 'me' : ''}"><span class="pl">${medal(r.place)}</span><span class="nk">${esc(r.nick)}</span><span class="sc">${esc(fmtScore(t.game, t.mode, r.score))}</span>${r.pid ? `<button class="x" data-hide="${r.pid}" title="Убрать ник из таблицы">🚫</button>` : ''}</div>`).join('')
+    : '<p>Пока никого нет. Стань первым!</p>')
+    + (t.me && !t.items.some(r => r.me) ? `<div class="lbr me"><span class="pl">${t.me.place}</span><span class="nk">${t.me.listed ? esc(me.nick) : 'Ты (без ника)'}</span><span class="sc">${esc(fmtScore(t.game, t.mode, t.me.score))}</span></div>` : '');
+  $('lbList').querySelectorAll('[data-hide]').forEach(b => b.onclick = async () => {
+    if (!confirm('Убрать этот ник из таблицы? Игрок сможет придумать другой.')) return;
+    try { await Mya.cloud.hide(b.dataset.hide); drawBoard(); } catch (e) { toast(e.message); }
+  });
+}
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
+$('lbOpen').onclick = () => openBoard();
+$('lb').onclick = e => { if (e.target === $('lb')) closeBoard(); };
+function showAcct(i) { $('acct').innerHTML = i.signed_in ? ` для «${esc(i.name)}» на всех устройствах` : ` (для всех устройств <a href="/#account">войди в аккаунт</a>)`; }
+Mya.cloud.on(i => { showAcct(i); if (!G) renderHub(); });
+Mya.cloud.sync(true);
+window.addEventListener('pagehide', () => Mya.cloud.flush());
+document.addEventListener('visibilitychange', () => { if (document.hidden) Mya.cloud.flush(); });
+
 // ---------- навигация по #адресу ----------
 function route() {
   const id = location.hash.slice(1);
+  closeBoard();
   if (inst) closeGame();
   if (Mya.games[id]) openGame(id); else renderHub();
 }

@@ -9,7 +9,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 
-from . import account, admin, ai, auth, catalog, library, maxbot, printing, seo, shop, social, store
+from . import account, admin, ai, auth, catalog, games, library, maxbot, printing, seo, shop, social, store
 from .config import settings
 from .db import engine
 
@@ -28,6 +28,7 @@ app.include_router(catalog.admin)
 app.include_router(maxbot.router)
 app.include_router(printing.router)
 app.include_router(library.router)
+app.include_router(games.router)
 app.include_router(seo.router)
 
 
@@ -81,7 +82,7 @@ def builder():
 
 @app.get("/igry")
 def games_page():
-    """«Мяу-аркада»: мини-игры для детей. Без рекламы, покупок и сбора данных, рекорды только в браузере."""
+    """«Мяу-аркада»: мини-игры для детей. Без рекламы и покупок; прогресс и турнирная таблица на сервере (app/games.py)."""
     return page("igry.html")
 
 
