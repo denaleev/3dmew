@@ -1576,10 +1576,14 @@ async function saveCard0(kind){
     const rec={id,user:S.user.id,kind,title:$('title').value.trim()||'Без названия',thumb:thumbOf(cv,360),state:captureState(),t:Date.now()};
     const blobs={id,png:S.fixed&&S.fixedBlob?S.fixedBlob:await canvasBlob(cv),photo:S.photoBlob||null,product:S.product?await canvasBlob(S.product):null,productCut:!!S.productCut,manual:S.manual&&S.manual.some(v=>v)?new Blob([S.manual]):null};
     await dbPut('blobs',blobs);await dbPut('items',rec);
-    if(kind==='card'){S.cardId=id;window.filesRefresh&&filesRefresh();if(S.draftId){await dbDel('items',S.draftId);await dbDel('blobs',S.draftId);S.draftId=null}S.dirty=false;saveState('✓ Сохранено в библиотеку '+fmtDate(rec.t));}
+    if(kind==='card'){S.cardId=id;window.filesRefresh&&filesRefresh();saveCutout(id,rec.title,blobs.product);if(S.draftId){await dbDel('items',S.draftId);await dbDel('blobs',S.draftId);S.draftId=null}S.dirty=false;saveState('✓ Сохранено в библиотеку '+fmtDate(rec.t));}
     else{S.draftId=id;saveState('📝 Черновик сохранён '+new Date(rec.t).toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'}))}
   }catch(e){saveState('⚠️ Не сохранилось: '+e.message)}finally{saving=false}}
 $('saveLib').onclick=()=>saveCard('card');
+// the shop admin keeps every neural-network cut-out in a separate library: the business card and booklet builder uses them
+function saveCutout(id,title,png){if(!SERVER||!S.user||!S.user.admin||!png||!S.productCut)return;
+  const f=new FormData();f.append('name',title);f.append('png',png,'cutout.png');
+  api('/api/cutouts/'+id,{method:'PUT',form:f}).catch(e=>console.warn('cut-out not saved',e))}
 $('fixRebuild').onclick=()=>{const ph=S.fixedPhoto;if(!ph){fixedOff();goTab('photo');return saveState('Загрузи фото изделия, чтобы собрать карточку заново')}
   if(!confirm('Собрать карточку заново из фото изделия? Картинка будет нарисована конструктором, старый вариант заменится, когда сохранишь.'))return;
   const keep=S.cardId;S.photoSaved=true;S.busyOpen=true;loadFile(ph,{fromLib:true,keepIds:true});S.cardId=keep;S.dirty=true};
