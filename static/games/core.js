@@ -1,4 +1,5 @@
-/* Мяу-аркада: общая часть. Без рекламы, покупок и сбора данных: всё хранится только в localStorage этого браузера. */
+/* Мяу-аркада: общая часть. Без рекламы и покупок. Прогресс хранится в localStorage и копируется на сервер
+   (аккаунт магазина или случайный номер браузера); в турнирную таблицу попадает только ник, который игрок придумал сам. */
 'use strict';
 const Mya = (() => {
   const INK = '#2b0a3d';
@@ -7,8 +8,64 @@ const Mya = (() => {
   // ---------- хранилище (может быть недоступно в приватном режиме) ----------
   const store = {
     get(k, d) { try { const v = localStorage.getItem('mya.' + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
-    set(k, v) { try { localStorage.setItem('mya.' + k, JSON.stringify(v)); } catch (e) { /* ничего */ } },
+    set(k, v, quiet) { try { localStorage.setItem('mya.' + k, JSON.stringify(v)); } catch (e) { /* ничего */ } if (!quiet) cloud.touch(k); },
   };
+
+  // ---------- сервер: копия прогресса и турнирная таблица ----------
+  const cloud = (() => {
+    const off = !/^https?:$/.test(location.protocol);
+    const LOCAL = /^(pid|mute|pixel\.p\.)/;  // настройки устройства и недорисованные картинки остаются в браузере
+    const dirty = new Set(), subs = [];
+    let timer = 0, busy = false, info = {nick: '', signed_in: false, name: '', ok: false};
+    function pid() {
+      let p = store.get('pid', '');
+      if (!/^[a-f0-9]{32}$/.test(p)) {
+        try { p = Array.from(crypto.getRandomValues(new Uint8Array(16)), b => b.toString(16).padStart(2, '0')).join(''); } catch (e) { p = (Date.now().toString(16) + Math.random().toString(16).slice(2)).padEnd(32, '0').slice(0, 32); }
+        store.set('pid', p, true);
+      }
+      return p;
+    }
+    function local() {
+      const o = {};
+      try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (!k.startsWith('mya.') || LOCAL.test(k.slice(4))) continue; try { o[k.slice(4)] = JSON.parse(localStorage.getItem(k)); } catch (e) { /* пропуск */ } } } catch (e) { /* нет хранилища */ }
+      return o;
+    }
+    async function req(method, url, body, keepalive) {
+      const r = await fetch(url, {method, credentials: 'same-origin', keepalive: !!keepalive, headers: {'content-type': 'application/json', 'x-player': pid()}, body: body ? JSON.stringify(body) : undefined});
+      if (!r.ok) { let m = 'Ошибка ' + r.status; try { const j = await r.json(); if (j.detail) m = typeof j.detail === 'string' ? j.detail : m; } catch (e) { /* без текста */ } throw new Error(m); }
+      return r.status === 204 ? null : r.json();
+    }
+    function apply(me) {
+      info = {nick: me.nick || '', signed_in: !!me.signed_in, name: me.name || '', ok: true};
+      for (const [k, v] of Object.entries(me.data || {})) if (!dirty.has(k)) store.set(k, v, true);
+      subs.forEach(f => { try { f(info); } catch (e) { /* ничего */ } });
+    }
+    const changed = keys => { const all = local(); return Object.fromEntries(keys.filter(k => k in all).map(k => [k, all[k]])); };
+    async function sync(fresh) {
+      if (off) return info;
+      if (busy) { touch(); return info; }
+      busy = true; clearTimeout(timer);
+      const keys = [...dirty]; dirty.clear();
+      try { apply(await req('PUT', '/api/games/me', {data: fresh ? local() : changed(keys), fresh: !!fresh})); }
+      catch (e) { keys.forEach(k => dirty.add(k)); }
+      finally { busy = false; }
+      return info;
+    }
+    function touch(k) {
+      if (off || (k && LOCAL.test(k))) return;
+      if (k) dirty.add(k);
+      clearTimeout(timer); timer = setTimeout(() => sync(false), 2500);
+    }
+    function flush() {  // страницу закрывают: отправить последнее без ожидания
+      if (off || !dirty.size) return;
+      const keys = [...dirty]; dirty.clear();
+      req('PUT', '/api/games/me', {data: changed(keys)}, true).catch(() => keys.forEach(k => dirty.add(k)));
+    }
+    async function setNick(nick) { const me = await req('PUT', '/api/games/nick', {nick}); info.nick = me.nick; subs.forEach(f => f(info)); return me.nick; }
+    const top = (game, mode, limit) => req('GET', `/api/games/top?game=${encodeURIComponent(game)}&mode=${encodeURIComponent(mode)}&limit=${limit || 20}`);
+    const hide = id => req('DELETE', '/api/games/admin/players/' + id + '/nick');
+    return {sync, touch, flush, setNick, top, hide, on: f => subs.push(f), get info() { return info; }, off};
+  })();
   const record = (game, mode) => store.get(`rec.${game}.${mode}`, 0);
   function saveRecord(game, mode, score, lowerIsBetter) {
     const old = record(game, mode);
@@ -109,5 +166,5 @@ ${back ? '' : `<g stroke="${O}" stroke-width="7.5" stroke-linecap="round" fill="
     el.addEventListener('pointercancel', () => { on = false; });
   }
 
-  return {INK, COL, store, record, saveRecord, difficulty, today, rng, catSVG, spoolSVG, catImg, spoolImg, rrect, block, text, beep, muted, swipes, games: {}};
+  return {INK, COL, store, cloud, record, saveRecord, difficulty, today, rng, catSVG, spoolSVG, catImg, spoolImg, rrect, block, text, beep, muted, swipes, games: {}};
 })();
