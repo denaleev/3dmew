@@ -17,8 +17,13 @@ def png(size=(40, 30), color=(255, 0, 0, 128)) -> bytes:
     return b.getvalue()
 
 
+def ip() -> dict:
+    # every test client looks like a separate visitor, so the sign-up rate limit doesn't kick in
+    return {"x-forwarded-for": f"10.{uuid.uuid4().int % 250}.{uuid.uuid4().int % 250}.{uuid.uuid4().int % 250}"}
+
+
 def user_client(admin: bool) -> TestClient:
-    c = TestClient(app)
+    c = TestClient(app, headers=ip())
     r = c.post("/api/auth/register", json={"login": "Библ " + uuid.uuid4().hex[:8], "password": "секрет123"})
     assert r.status_code == 200, r.text
     if admin:
@@ -81,4 +86,4 @@ def test_admin_only():
     u = user_client(admin=False)
     assert u.get("/api/admin/library").status_code == 403
     assert u.post("/api/admin/library", files={"files": ("a.png", png(), "image/png")}).status_code == 403
-    assert TestClient(app).get("/api/admin/library").status_code == 401
+    assert TestClient(app, headers=ip()).get("/api/admin/library").status_code == 401
