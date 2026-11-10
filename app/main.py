@@ -9,7 +9,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 
-from . import account, admin, ai, auth, catalog, maxbot, seo, shop, social, store
+from . import account, admin, ai, auth, catalog, maxbot, printing, seo, shop, social, store
 from .config import settings
 from .db import engine
 
@@ -26,6 +26,7 @@ app.include_router(admin.router)
 app.include_router(catalog.public)
 app.include_router(catalog.admin)
 app.include_router(maxbot.router)
+app.include_router(printing.router)
 app.include_router(seo.router)
 
 
@@ -79,6 +80,12 @@ def builder():
 def admin_page():
     """Orders, custom requests, statistics and settings of the shop."""
     return page("admin.html")
+
+
+@app.get("/admin/print")
+def print_page():
+    """Business card and booklet builder (admin only: the page asks the API, which checks the account)."""
+    return page("print.html")
 
 
 @app.exception_handler(404)

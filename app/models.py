@@ -331,3 +331,22 @@ class ReviewPhoto(Base):
     data: Mapped[bytes] = mapped_column(LargeBinary)
     thumb: Mapped[bytes] = mapped_column(LargeBinary)
 
+
+
+class Cutout(Base):
+    """A product photo with the background removed by the card builder's neural network.
+
+    Kept apart from the card itself (survives deleting the card) and used by the admin's
+    business card and booklet builder. One row per saved card (user_id + source), or an upload (source NULL)."""
+    __tablename__ = "cutouts"
+    __table_args__ = (UniqueConstraint("user_id", "source"),)
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    user_id: Mapped[Optional[str]] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), index=True)
+    source: Mapped[Optional[str]] = mapped_column(String(40))  # id of the library card it came from
+    name: Mapped[str] = mapped_column(String(300), default="")
+    png: Mapped[bytes] = mapped_column(LargeBinary)
+    thumb: Mapped[Optional[bytes]] = mapped_column(LargeBinary)  # small PNG, made on first request
+    width: Mapped[int] = mapped_column(Integer, default=0)
+    height: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

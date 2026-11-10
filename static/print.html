@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Визитки и буклет</title>
+<link rel="icon" type="image/png" href="/api/shop/favicon/64.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800;900&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
+<style id="pageSize">@page{size:94mm 54mm;margin:0}</style>
+<style>
+:root{--bg:#fff8f1;--line:#f0e2d6;--text:#2d1a33;--muted:#7f6b7a;--acc:#7a2e8e;--acc2:#f07a1a;--hot:#e8508a;--soft:#f3e6fa;--soft2:#ffe6d1;--bad:#dc2626}
+*{box-sizing:border-box}html,body{margin:0}
+body{font:14.5px/1.45 Nunito,system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;background:#efe6dd;color:var(--text)}
+/* ---------- editor UI ---------- */
+header{position:sticky;top:0;z-index:30;background:#fff;border-bottom:1px solid var(--line)}
+.hw{max-width:1500px;margin:0 auto;display:flex;align-items:center;gap:10px;padding:10px 16px;flex-wrap:wrap}
+h1{font-size:17px;margin:0}.sp{flex:1}
+.btn{border:0;border-radius:11px;padding:9px 14px;font:inherit;font-weight:700;cursor:pointer;background:#f7ece2;color:var(--text);display:inline-flex;align-items:center;gap:6px;text-decoration:none;white-space:nowrap}
+.btn:hover{filter:brightness(.96)}.btn.pri{background:linear-gradient(135deg,#f59331,#e2600c);color:#fff}.btn.sm{padding:6px 10px;font-size:13px}.btn.danger{background:#fee2e2;color:var(--bad)}
+.seg{display:inline-flex;background:#f7ece2;border-radius:12px;padding:3px}.seg button{border:0;background:none;font:inherit;font-weight:800;padding:7px 14px;border-radius:9px;cursor:pointer;color:var(--muted)}
+.seg button.on{background:#fff;color:var(--acc);box-shadow:0 1px 4px rgba(0,0,0,.08)}
+.mut{color:var(--muted);font-size:13px}
+.layout{max-width:1500px;margin:0 auto;display:grid;grid-template-columns:300px minmax(0,1fr);gap:16px;padding:16px}
+@media(max-width:900px){.layout{grid-template-columns:1fr}}
+.panel{background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px;align-self:start;position:sticky;top:76px}
+@media(max-width:900px){.panel{position:static}}
+.panel h3{font-size:14px;margin:4px 0 8px}
+label.f{display:block;margin:0 0 10px}label.f>span{display:block;font-size:12.5px;font-weight:700;color:#5e4a5c;margin-bottom:4px}
+label.f input{width:100%;font:inherit;padding:8px 10px;border:1.5px solid var(--line);border-radius:10px;background:#fff}
+.tips{font-size:12.5px;color:var(--muted);line-height:1.45;margin:10px 0 0;padding-left:18px}
+.stage{overflow:auto;padding:4px 0 40px}
+.stage .cap{font-weight:800;color:var(--muted);font-size:calc(13px / var(--z,1));margin:calc(14px / var(--z,1)) 0 calc(6px / var(--z,1))}
+.gate{max-width:420px;margin:60px auto;background:#fff;border:1px solid var(--line);border-radius:16px;padding:18px}
+.toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:#2d1a33;color:#fff;padding:10px 16px;border-radius:11px;z-index:90;display:none;font-weight:600}
+.hide{display:none!important}
+/* picker */
+.ov{position:fixed;inset:0;background:rgba(45,26,51,.45);z-index:50;display:none;align-items:center;justify-content:center;padding:16px}.ov.on{display:flex}
+.dlg{background:#fff;border-radius:18px;width:min(900px,100%);max-height:calc(100vh - 32px);display:flex;flex-direction:column;overflow:hidden}
+.dlg .top{display:flex;gap:8px;align-items:center;padding:14px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.dlg .top input[type=search]{flex:1;min-width:160px;font:inherit;padding:8px 11px;border:1.5px solid var(--line);border-radius:11px}
+.pick{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;padding:14px;overflow:auto}
+.pick .o{border:2px solid var(--line);border-radius:12px;padding:6px;cursor:pointer;background:#fff;text-align:center;font-size:12px;position:relative}
+.pick .o:hover{border-color:var(--acc2)}.pick .o.on{border-color:var(--acc)}
+.pick .o img{width:100%;aspect-ratio:1;object-fit:contain;display:block;background:repeating-conic-gradient(#f4eee9 0 25%,#fff 0 50%) 0 0/16px 16px;border-radius:8px}
+.pick .o .nm{margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pick .o .x{position:absolute;right:4px;top:4px;border:0;background:#fff;border-radius:8px;cursor:pointer;font-size:13px;padding:2px 5px;display:none}.pick .o:hover .x{display:block}
+.pick .empty{grid-column:1/-1;text-align:center;color:var(--muted);padding:30px}
+
+/* ---------- printed sheets (sizes in mm, with bleed) ---------- */
+.sheets{display:flex;flex-direction:column;align-items:flex-start;gap:0}
+.sheet{position:relative;overflow:hidden;background:#fff;box-shadow:0 4px 18px rgba(45,26,51,.16);font-family:Inter,system-ui,sans-serif;color:var(--text);-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.sheet *{box-sizing:border-box}
+.guide{position:absolute;pointer-events:none;z-index:9;border:.2mm dashed rgba(220,38,38,.75)}
+.fold{position:absolute;top:0;bottom:0;width:0;border-left:.2mm dashed rgba(37,99,235,.8);pointer-events:none;z-index:9}
+body.noguides .guide,body.noguides .fold{display:none}
+[contenteditable]{outline:none;border-radius:1mm;cursor:text;white-space:pre-wrap}
+[contenteditable]:hover{box-shadow:0 0 0 .3mm rgba(240,122,26,.6)}[contenteditable]:focus{box-shadow:0 0 0 .4mm var(--acc2)}
+[contenteditable]:empty::before{content:"…";opacity:.4}
+.im{position:relative;cursor:pointer;overflow:hidden}
+.im img{width:100%;height:100%;object-fit:contain;display:block}
+.im.none{outline:.4mm dashed #d9c6b8;outline-offset:-.4mm}
+.im.none::after{content:"🖼 выбрать";position:absolute;inset:0;display:grid;place-items:center;font:600 3mm Nunito,sans-serif;color:#b59c8c}
+.im:hover{outline:.5mm solid var(--acc2);outline-offset:-.5mm}
+.blob{position:absolute;border-radius:50%}
+
+/* business card 94x54 (90x50 + 2 mm bleed) */
+.vz{width:94mm;height:54mm}
+.vz.front{background:#fff}
+.vz.front .b1{width:46mm;height:46mm;right:-14mm;top:-16mm;background:var(--soft)}
+.vz.front .b2{width:30mm;height:30mm;left:-12mm;bottom:-14mm;background:var(--soft2)}
+.vz .logo{position:absolute;left:5mm;top:6mm;width:42mm;height:42mm}
+.vz .logo img{mix-blend-mode:multiply}
+.vz .txt{position:absolute;left:48mm;right:6mm;top:9mm;bottom:8mm;display:flex;flex-direction:column;justify-content:center}
+.vz .brand{font-weight:900;font-size:19pt;letter-spacing:-.02em;line-height:1;display:flex}
+.vz .brand .a{color:var(--acc)}.vz .brand .b{color:var(--acc2)}
+.vz .tag{margin-top:2.2mm;font-size:6.6pt;line-height:1.32;color:var(--muted);font-weight:500}
+.vz .site{margin-top:3.4mm;align-self:flex-start;background:var(--acc2);color:#fff;font-weight:800;font-size:8.4pt;padding:1.3mm 3mm;border-radius:10mm}
+.vz.back{background:var(--acc);color:#fff}
+.vz.back .b1{width:50mm;height:50mm;left:-18mm;top:-22mm;background:#8c3fa0}
+.vz.back .b2{width:36mm;height:36mm;right:-12mm;bottom:-16mm;background:var(--acc2);opacity:.9}
+.vz .row{position:absolute;left:6mm;right:6mm;top:6mm;bottom:6mm;display:flex;gap:4mm}
+.vz .tile{flex:1;background:#fff;color:var(--text);border-radius:3mm;display:flex;align-items:center;gap:2.4mm;padding:3mm 2.6mm 3mm 3.2mm}
+.vz .tile .qr{width:21mm;height:21mm;flex:none}
+.vz .tile .tc{display:flex;flex-direction:column;gap:1mm;min-width:0}
+.vz .tile .t{font-weight:800;font-size:7.6pt;line-height:1.1}
+.vz .tile .s{font-size:5.6pt;color:var(--muted);line-height:1.25;font-weight:500}
+.vz .tile .k{font-weight:800;font-size:5.8pt;color:#fff;background:var(--acc);border-radius:5mm;padding:.5mm 1.6mm;align-self:flex-start}
+.vz .tile.max .k{background:var(--acc2)}
+
+/* booklet: A4 roll fold, 303x216 (297x210 + 3 mm bleed) */
+.bk{width:303mm;height:216mm;background:var(--bg)}
+.bk .col{position:absolute;top:0;bottom:0}
+.bk .in{position:absolute;top:3mm;bottom:3mm;left:0;right:0;padding:9mm 8mm;display:flex;flex-direction:column}
+.bk .flap{left:0;width:100mm}.bk .flap .in{left:3mm}
+.bk .backp{left:100mm;width:100mm}
+.bk .cover{left:200mm;width:103mm;background:var(--acc);color:#fff}.bk .cover .in{right:3mm}
+.bk h3{font-size:17pt;font-weight:900;letter-spacing:-.02em;line-height:1.08;margin:0}
+.bk .lead{margin:3mm 0 0;font-size:9pt;line-height:1.4;color:var(--muted)}
+.bk .steps{margin-top:7mm;display:flex;flex-direction:column;gap:4.2mm}
+.bk .step{display:flex;gap:3.4mm;align-items:flex-start}
+.bk .step i{flex:none;width:8mm;height:8mm;border-radius:50%;background:var(--acc2);color:#fff;font-style:normal;font-weight:900;font-size:11pt;display:grid;place-items:center}
+.bk .step b{display:block;font-size:9.6pt;margin-bottom:.6mm}
+.bk .step span{display:block;font-size:8.2pt;color:var(--muted);line-height:1.35;font-weight:500}
+.bk .chips{margin-top:5mm;font-size:7.4pt;font-weight:700;color:var(--acc)}
+.bk .pic{margin-top:auto;display:grid;grid-template-columns:1fr 1fr;gap:3mm}
+.bk .pic .im{height:40.5mm;border-radius:4mm;background:#fff;box-shadow:0 0 0 .3mm var(--line);padding:2.5mm}
+.bk .qrbox{background:#fff;border-radius:5mm;padding:6mm;display:flex;flex-direction:column;gap:3.5mm;align-items:center;text-align:center;box-shadow:0 0 0 .3mm var(--line)}
+.bk .qrbox .qr{width:36mm;height:36mm}
+.bk .qrbox .k{color:#fff;background:var(--acc);font-weight:800;font-size:8pt;border-radius:5mm;padding:.8mm 2.6mm}
+.bk .qrbox.max .k{background:var(--acc2)}
+.bk .qrbox b{display:block;font-size:12pt;line-height:1.1;margin:-1mm 0 0}
+.bk .qrbox .s{font-size:8pt;color:var(--muted);line-height:1.35;margin-top:-2mm}
+.bk .qrs{margin-top:6mm;display:flex;flex-direction:column;gap:5mm}
+.bk .fine{margin-top:auto;font-size:6.8pt;color:var(--muted);line-height:1.4}
+.bk .cover .clogo{width:74mm;height:74mm;align-self:center;border-radius:8mm;background:#fff;padding:2mm}
+.bk .cover h1{margin:7mm 0 0;font-size:21pt;font-weight:900;line-height:1.08;letter-spacing:-.02em}
+.bk .cover .sub{margin:3mm 0 0;font-size:9.6pt;line-height:1.4;opacity:.92}
+.bk .trio{margin-top:auto;display:flex;gap:3mm}
+.bk .trio .im{flex:1;height:27mm;border-radius:4mm;background:#fff;padding:1.5mm}
+.bk .cover .url{margin-top:5mm;align-self:flex-start;background:#fff;color:var(--acc);font-weight:900;font-size:13pt;border-radius:10mm;padding:1.8mm 5mm}
+.bk.inside{display:flex;padding:3mm}
+.bk .pn{position:relative;height:210mm;padding:9mm 7mm 8mm;display:flex;flex-direction:column}
+.bk .pn.p3{padding-left:5.5mm;padding-right:5.5mm}
+.bk .pn h2{font-size:18pt;font-weight:900;letter-spacing:-.02em;line-height:1;margin:0}
+.bk .p1 h2{color:var(--acc2)}.bk .p2 h2{color:var(--acc)}.bk .p3 h2{color:var(--hot)}
+.bk .pn .ps{margin:1.8mm 0 0;font-size:8pt;color:var(--muted);line-height:1.35;min-height:7mm}
+.bk .grid{margin-top:5mm;display:grid;grid-template-columns:41mm 41mm;gap:4mm}
+.bk .it{position:relative;background:#fff;border-radius:4mm;padding:1.6mm 1.6mm 2.4mm;box-shadow:0 0 0 .3mm var(--line);height:57mm;display:flex;flex-direction:column}
+.bk .it .im{height:37.8mm;background:#fff;padding:1.5mm;flex:none}
+.bk .it .nm{margin-top:1.8mm;padding:0 .8mm;font-size:8pt;font-weight:700;line-height:1.15;min-height:7.2mm}
+.bk .it .pr{margin-top:.6mm;padding:0 .8mm;font-size:9.5pt;font-weight:900;color:var(--acc)}
+.bk .it.note{justify-content:center;padding:4mm;font-size:8pt;line-height:1.38;color:#fff;box-shadow:none}
+.bk .it.note b{display:block;font-size:10.5pt;margin-bottom:2mm;line-height:1.12}
+.bk .it.note .nt{font-weight:500}
+.bk .p1 .it.note,.bk .it.note.c2{background:var(--acc2)}.bk .it.note{background:var(--acc)}
+.bk .it.empty{background:none;box-shadow:none}
+.bk .it.empty::after{content:"пустое место";position:absolute;inset:0;display:grid;place-items:center;border:.4mm dashed #e2d2c4;border-radius:4mm;color:#c3ad9d;font:600 3mm Nunito,sans-serif}
+.bk .prices{position:absolute;left:0;right:0;bottom:4.6mm;text-align:center;font-size:6.8pt;color:var(--muted)}
+.slotbar{position:absolute;right:1mm;top:1mm;z-index:5;display:none;gap:.8mm}
+.it:hover .slotbar{display:flex}
+.slotbar button{border:0;border-radius:1.6mm;background:rgba(45,26,51,.82);color:#fff;font:700 2.6mm Nunito,sans-serif;padding:.8mm 1.4mm;cursor:pointer}
+
+@media print{
+  html,body{background:#fff}
+  header,.panel,.stage .cap,.toast,.ov,.guide,.fold,.slotbar{display:none!important}
+  .layout{display:block;padding:0;max-width:none}.stage{padding:0;overflow:visible}
+  .sheets{zoom:1!important;gap:0}
+  .sheet{box-shadow:none;break-after:page;page-break-after:always}
+  .im.none,.it.empty{outline:0}.im.none::after,.it.empty::after{display:none}
+  [contenteditable]{box-shadow:none!important}[contenteditable]:empty::before{content:none}
+}
+</style>
+</head>
+<body>
+<header><div class="hw"><img src="/img/logo-160.png" alt="" style="height:40px;width:auto"><h1>Визитки и буклет</h1>
+  <div class="seg" id="mode"><button data-m="card" class="on">Визитка</button><button data-m="booklet">Буклет</button></div>
+  <div class="sp"></div><span class="mut" id="saved"></span>
+  <button class="btn pri" id="print">🖨 Печать / PDF</button><a class="btn sm" href="/admin">← Управление магазином</a></div></header>
+<div class="layout" id="app">
+  <aside class="panel">
+    <h3>QR-коды</h3>
+    <label class="f"><span>Ссылка на сайт</span><input id="qSite" placeholder="https://3dmew.ru"></label>
+    <label class="f"><span>Ссылка на канал в MAX</span><input id="qMax" placeholder="https://max.ru/…"></label>
+    <h3>Макет</h3>
+    <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-start">
+      <button class="btn sm hide" id="fill">🏷 Заполнить товарами магазина</button>
+      <button class="btn sm" id="lib">🖼 Библиотека картинок</button>
+      <label class="mut"><input type="checkbox" id="guides" checked> Линии реза и сгибов</label>
+      <button class="btn sm danger" id="reset">↺ Вернуть исходный шаблон</button>
+    </div>
+    <ul class="tips">
+      <li>Текст правится прямо на макете: нажми на него и пиши.</li>
+      <li>Нажми на картинку, чтобы выбрать фото без фона из библиотеки. Туда попадают вырезанные фото из конструктора карточек, когда карточка сохраняется в библиотеку.</li>
+      <li>В буклете у каждой ячейки есть кнопки: товар, текст или пустое место.</li>
+      <li>«Печать / PDF» → «Сохранить как PDF», поля «Нет», масштаб 100%. Размер страницы уже с вылетами под обрез: визитка 94×54 мм, буклет 303×216 мм.</li>
+    </ul>
+  </aside>
+  <div class="stage"><div id="stage"></div></div>
+</div>
+<div class="ov" id="pickOv"><div class="dlg">
+  <div class="top"><b id="pickTitle">Выбери картинку</b><input type="search" id="pickQ" placeholder="Поиск по названию">
+    <label class="btn sm">⬆️ Загрузить PNG<input type="file" id="pickUp" accept="image/png,image/webp,image/jpeg" multiple hidden></label>
+    <button class="btn sm" id="pickNone">Без картинки</button><button class="btn sm" id="pickClose">✕</button></div>
+  <div class="pick" id="pickList"></div></div></div>
+<div class="toast" id="toast"></div>
+<script>
+"use strict";
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+async function api(url,o){o=o||{};const opt={method:o.method||'GET',credentials:'same-origin',headers:{}};
+  if(o.json!==undefined){opt.headers['content-type']='application/json';opt.body=JSON.stringify(o.json)}
+  if(o.form!==undefined)opt.body=o.form;
+  const r=await fetch(url,opt);if(!r.ok){let m='Ошибка '+r.status;try{const j=await r.json();if(j.detail)m=typeof j.detail==='string'?j.detail:(j.detail[0]&&j.detail[0].msg)||m}catch(e){}const er=new Error(m);er.status=r.status;throw er}
+  return r.status===204?null:r.json()}
+function toast(t){const e=$('toast');e.textContent=t;e.style.display='block';clearTimeout(e._t);e._t=setTimeout(()=>e.style.display='none',2600)}
+const clone=o=>JSON.parse(JSON.stringify(o));
+
+/* ---------- default templates (the first printed layout) ---------- */
+const NOTE1={k:'note',title:'Можно раскрасить',text:'Белых котиков легко раскрасить самому акрилом или маркерами'};
+const NOTE3={k:'note',title:'Хотите другое?',text:'Напечатаем по вашей идее, фото или файлу модели'};
+const it=(name,price)=>({k:'item',img:null,name,price});
+const DEF={
+  card:{t:{brand1:'3D',brand2:'Мяу',tag:'Милые вещи, напечатанные на 3D-принтере. Котики, антистрессы, декор и печать ваших идей на заказ',site:'3dmew.ru',
+      k1:'Сайт',t1:'Каталог и заказ',s1:'3dmew.ru',k2:'MAX',t2:'Наш канал',s2:'Новинки и анонсы'},img:{logo:'logo'}},
+  booklet:{t:{
+      fTitle:'Печать\nна заказ',fLead:'Есть идея? Пришлите фото, рисунок или готовый файл модели, и мы напечатаем её в нужном цвете.',
+      st1:'Выберите или придумайте',sd1:'Изделие из каталога или ваша идея',st2:'Выберите цвет',sd2:'Пластик разных цветов, есть переливающийся шёлк',
+      st3:'Оформите заказ на сайте',sd3:'Изготовление обычно 3–7 дней',chips:'STL · 3MF · фото · эскиз',
+      bTitle:'Заходите\nи подписывайтесь',bLead:'Наведите камеру телефона на код.',k1:'Сайт',t1:'Весь каталог и заказ',s1:'3dmew.ru',
+      k2:'Канал в MAX',t2:'Новинки первыми',s2:'Фото новых изделий и анонсы',
+      fine:'Изделия могут содержать мелкие детали и не предназначены для детей до 3 лет. Не для контакта с пищевыми продуктами.',
+      cTitle:'Милые вещи\nс 3D-принтера',cSub:'Котики, антистрессы, декор и подарки. Печать ваших идей на заказ.',cUrl:'3dmew.ru',
+      h1:'Котики',d1:'Подвижные котики: гнутся, шевелят лапками и хвостом',h2:'Антистрессы',d2:'Кручу, верчу, поиграть хочу',
+      h3:'Хэллоуин и дом',d3:'Привидения, тыквы и полезные мелочи',prices:'Цены на ноябрь 2026 года. Актуальные цены, цвета и наличие на сайте 3dmew.ru'},
+    img:{clogo:'logo',pic1:null,pic2:null,pic3:null,pic4:null,trio1:null,trio2:null,trio3:null},
+    slots:[it('Роза кошка','200 ₽'),it('Рыжик','250 ₽'),it('Море кот','200 ₽'),it('Мелкий','50 ₽'),it('Котик-тыква','100 ₽'),NOTE1,
+      it('Пирамида','200 ₽'),it('Гироскоп','200 ₽'),it('Конус-вертушка коралловая','120 ₽'),it('Конус-вертушка лиловая','150 ₽'),it('Вертушка-вихрь','170 ₽'),it('Морская звезда','250 ₽'),
+      it('Котёл с зельем ведьмы','400 ₽'),it('Привидяша','50 ₽'),it('Страшуля','50 ₽'),it('Тыква с ножками','100 ₽'),it('Подставка под наушники','250 ₽'),NOTE3]}};
+
+const P={mode:'card',L:{card:null,booklet:null},lib:[],info:{},dirty:{}};
+const cur=()=>P.L[P.mode];
+
+/* ---------- rendering ---------- */
+function T(key,tag,cls){return `<${tag||'div'} class="${cls||''}" contenteditable="plaintext-only" spellcheck="false" data-t="${key}">${esc(cur().t[key]??'')}</${tag||'div'}>`}
+function imgSrc(v){if(v==='logo')return '/img/logo-512.png';const c=P.lib.find(x=>x.id===v);return c?c.png:(typeof v==='number'?`/api/admin/cutouts/${v}/png`:'')}
+function IM(key,cls,slot){const v=slot!=null?cur().slots[slot].img:cur().img[key];const src=v!=null?imgSrc(v):'';
+  return `<div class="im ${cls||''} ${src?'':'none'}" data-img="${key||''}" ${slot!=null?`data-slot="${slot}"`:''}>${src?`<img src="${esc(src)}" alt="">`:''}</div>`}
+function QR(which){const L=cur(),u=(which==='max'?L.qr.max:L.qr.site)||'';
+  return u?`<img class="qr" src="/api/admin/print/qr.svg?text=${encodeURIComponent(u)}" alt="">`:`<div class="qr im none" title="Укажи ссылку слева"></div>`}
+function guides(w,h,b,folds){return `<div class="guide" style="left:${b}mm;top:${b}mm;width:${w-2*b}mm;height:${h-2*b}mm"></div>`+(folds||[]).map(x=>`<div class="fold" style="left:${x}mm"></div>`).join('')}
+
+function renderCard(){return `<div class="cap">Лицевая сторона</div>
+<section class="sheet vz front"><div class="blob b1"></div><div class="blob b2"></div>${IM('logo','logo')}
+  <div class="txt"><div class="brand">${T('brand1','span','a')}${T('brand2','span','b')}</div>${T('tag','div','tag')}${T('site','div','site')}</div>${guides(94,54,2)}</section>
+<div class="cap">Оборот</div>
+<section class="sheet vz back"><div class="blob b1"></div><div class="blob b2"></div><div class="row">
+  <div class="tile">${QR('site')}<div class="tc">${T('k1','span','k')}${T('t1','span','t')}${T('s1','span','s')}</div></div>
+  <div class="tile max">${QR('max')}<div class="tc">${T('k2','span','k')}${T('t2','span','t')}${T('s2','span','s')}</div></div></div>${guides(94,54,2)}</section>`}
+
+function slotHtml(i){const s=cur().slots[i],bar=`<div class="slotbar"><button data-act="item" data-i="${i}">товар</button><button data-act="note" data-i="${i}">текст</button><button data-act="empty" data-i="${i}">пусто</button></div>`;
+  if(s.k==='note')return `<div class="it note">${bar}<b contenteditable="plaintext-only" spellcheck="false" data-s="${i}" data-f="title">${esc(s.title||'')}</b><div class="nt" contenteditable="plaintext-only" spellcheck="false" data-s="${i}" data-f="text">${esc(s.text||'')}</div></div>`;
+  if(s.k==='empty')return `<div class="it empty">${bar}</div>`;
+  return `<div class="it">${bar}${IM(null,'',i)}<div class="nm" contenteditable="plaintext-only" spellcheck="false" data-s="${i}" data-f="name">${esc(s.name||'')}</div><div class="pr" contenteditable="plaintext-only" spellcheck="false" data-s="${i}" data-f="price">${esc(s.price||'')}</div></div>`}
+function panel(n,w){let g='';for(let i=(n-1)*6;i<n*6;i++)g+=slotHtml(i);
+  return `<div class="pn p${n}" style="width:${w}mm">${T('h'+n,'h2')}${T('d'+n,'p','ps')}<div class="grid">${g}</div></div>`}
+function renderBooklet(){return `<div class="cap">Сторона 1, внешняя: клапан (заворачивается внутрь) · задняя сторона · обложка</div>
+<section class="sheet bk outside">
+  <div class="col flap"><div class="in">${T('fTitle','h3')}${T('fLead','p','lead')}
+    <div class="steps">${[1,2,3].map(n=>`<div class="step"><i>${n}</i><div>${T('st'+n,'b')}${T('sd'+n,'span')}</div></div>`).join('')}</div>
+    ${T('chips','div','chips')}<div class="pic">${IM('pic1')}${IM('pic2')}${IM('pic3')}${IM('pic4')}</div></div></div>
+  <div class="col backp"><div class="in">${T('bTitle','h3')}${T('bLead','p','lead')}
+    <div class="qrs"><div class="qrbox">${QR('site')}${T('k1','span','k')}${T('t1','b')}${T('s1','span','s')}</div>
+    <div class="qrbox max">${QR('max')}${T('k2','span','k')}${T('t2','b')}${T('s2','span','s')}</div></div>${T('fine','p','fine')}</div></div>
+  <div class="col cover"><div class="in">${IM('clogo','clogo')}${T('cTitle','h1')}${T('cSub','p','sub')}
+    <div class="trio">${IM('trio1')}${IM('trio2')}${IM('trio3')}</div>${T('cUrl','div','url')}</div></div>
+  ${guides(303,216,3,[100,200])}</section>
+<div class="cap">Сторона 2, внутренняя: товары</div>
+<section class="sheet bk inside">${panel(1,100)}${panel(2,100)}${panel(3,97)}${T('prices','div','prices')}${guides(303,216,3,[103,203])}</section>`}
+
+function render(){const st=$('stage');st.innerHTML=`<div class="sheets" id="sheets">${P.mode==='card'?renderCard():renderBooklet()}</div>`;
+  $('pageSize').textContent=P.mode==='card'?'@page{size:94mm 54mm;margin:0}':'@page{size:303mm 216mm;margin:0}';
+  document.querySelectorAll('#mode button').forEach(b=>b.classList.toggle('on',b.dataset.m===P.mode));
+  $('fill').classList.toggle('hide',P.mode!=='booklet');$('qSite').value=cur().qr.site||'';$('qMax').value=cur().qr.max||'';fit()}
+function fit(){const s=$('sheets');if(!s)return;const w=P.mode==='card'?94:303,px=w*96/25.4,avail=$('stage').clientWidth-8;
+  const z=Math.min(P.mode==='card'?2.4:1.3,Math.max(.3,avail/px));s.style.zoom=z.toFixed(3);s.style.setProperty('--z',z.toFixed(3))}
+window.addEventListener('resize',fit);
+
+/* ---------- editing ---------- */
+$('stage').addEventListener('input',e=>{const el=e.target.closest('[contenteditable]');if(!el)return;const L=cur(),v=el.innerText.replace(/\n$/,'');
+  if(el.dataset.t)L.t[el.dataset.t]=v;else if(el.dataset.s!=null)L.slots[+el.dataset.s][el.dataset.f]=v;dirty()});
+$('stage').addEventListener('paste',e=>{if(!e.target.closest('[contenteditable]'))return;e.preventDefault();document.execCommand('insertText',false,(e.clipboardData||window.clipboardData).getData('text/plain'))});
+$('stage').addEventListener('click',e=>{const b=e.target.closest('.slotbar button');
+  if(b){const i=+b.dataset.i,L=cur(),s=L.slots[i];
+    if(b.dataset.act==='item')L.slots[i]={k:'item',img:s.img??null,name:s.name||s.title||'Название',price:s.price||'0 ₽'};
+    else if(b.dataset.act==='note')L.slots[i]={k:'note',title:s.title||s.name||'Заголовок',text:s.text||'Текст'};
+    else L.slots[i]={k:'empty'};dirty();render();return}
+  const im=e.target.closest('.im[data-img],.im[data-slot]');if(im)openPick(im.dataset.slot!=null?{slot:+im.dataset.slot}:{key:im.dataset.img})});
+['qSite','qMax'].forEach(id=>$(id).addEventListener('change',()=>{const L=cur();L.qr[id==='qSite'?'site':'max']=$(id).value.trim();dirty();render()}));
+$('guides').onchange=()=>document.body.classList.toggle('noguides',!$('guides').checked);
+document.querySelectorAll('#mode button').forEach(b=>b.onclick=()=>{P.mode=b.dataset.m;history.replaceState(null,'','#'+P.mode);render()});
+$('print').onclick=()=>{flush();const g=$('guides').checked;window.print()};
+$('reset').onclick=()=>{if(!confirm('Вернуть исходный шаблон? Все правки этого макета пропадут.'))return;P.L[P.mode]=fresh(P.mode);dirty();render()};
+
+/* ---------- saving ---------- */
+let saveT;
+function dirty(){P.dirty[P.mode]=true;$('saved').textContent='Есть изменения…';clearTimeout(saveT);saveT=setTimeout(flush,1200)}
+async function flush(){clearTimeout(saveT);const body={};for(const k in P.dirty)if(P.dirty[k])body[k]=P.L[k];if(!Object.keys(body).length)return;P.dirty={};
+  try{await api('/api/admin/print',{method:'PUT',json:body});$('saved').textContent='✓ Сохранено'}catch(e){Object.keys(body).forEach(k=>P.dirty[k]=true);$('saved').textContent='⚠️ Не сохранилось: '+e.message}}
+window.addEventListener('beforeunload',e=>{if(Object.values(P.dirty).some(Boolean)){flush();e.preventDefault()}});
+
+/* ---------- picture library ---------- */
+let PK=null;
+async function loadLib(){try{P.lib=await api('/api/admin/cutouts')}catch(e){P.lib=[]}}
+function openPick(target){PK=target;$('pickTitle').textContent=target?'Выбери картинку':'Библиотека картинок';$('pickNone').classList.toggle('hide',!target);
+  $('pickQ').value='';drawPick();$('pickOv').classList.add('on');setTimeout(()=>$('pickQ').focus(),50)}
+function curVal(){if(!PK)return undefined;return PK.slot!=null?cur().slots[PK.slot].img:cur().img[PK.key]}
+function drawPick(){const q=$('pickQ').value.trim().toLowerCase(),v=curVal();
+  const items=[{id:'logo',name:'Логотип магазина',thumb:'/img/logo-512.png'}].concat(P.lib).filter(c=>!q||c.name.toLowerCase().includes(q));
+  $('pickList').innerHTML=items.length?items.map(c=>`<div class="o ${v===c.id?'on':''}" data-id="${c.id}" title="${esc(c.name)}"><img src="${esc(c.thumb)}" loading="lazy" alt="">
+    <div class="nm">${esc(c.name)}</div>${c.id!=='logo'?`<button class="x" data-del="${c.id}" title="Удалить из библиотеки">🗑</button>`:''}</div>`).join('')
+    :`<div class="empty">Пока пусто. Сохрани карточку с вырезанным фото в конструкторе карточек или загрузи PNG.</div>`}
+$('pickQ').oninput=drawPick;
+$('pickList').onclick=async e=>{const d=e.target.closest('[data-del]');
+  if(d){e.stopPropagation();if(!confirm('Удалить картинку из библиотеки? В макетах на её месте станет пусто.'))return;
+    try{await api('/api/admin/cutouts/'+d.dataset.del,{method:'DELETE'});await loadLib();drawPick();render()}catch(er){toast(er.message)}return}
+  const o=e.target.closest('.o');if(!o||!PK)return;const id=o.dataset.id==='logo'?'logo':+o.dataset.id;setImg(id)};
+function setImg(id){if(PK.slot!=null)cur().slots[PK.slot].img=id;else cur().img[PK.key]=id;$('pickOv').classList.remove('on');dirty();render()}
+$('pickNone').onclick=()=>setImg(null);
+$('pickClose').onclick=()=>$('pickOv').classList.remove('on');
+$('pickOv').onclick=e=>{if(e.target===$('pickOv'))$('pickOv').classList.remove('on')};
+$('pickUp').onchange=async()=>{const fs=[...$('pickUp').files];$('pickUp').value='';let last=null;
+  for(const f of fs){const fd=new FormData();fd.append('file',f);try{last=await api('/api/admin/cutouts',{method:'POST',form:fd})}catch(e){toast(f.name+': '+e.message)}}
+  await loadLib();drawPick();if(last&&PK&&fs.length===1)setImg(last.id)};
+$('lib').onclick=()=>openPick(null);
+
+/* ---------- fill the booklet from the shop's products ---------- */
+const norm=s=>String(s||'').toLowerCase().replace(/ё/g,'е').replace(/[^a-zа-я0-9]+/g,'');
+$('fill').onclick=async()=>{let ps;try{ps=(await api('/api/admin/products')).filter(p=>p.published)}catch(e){return toast(e.message)}
+  if(!ps.length)return toast('В магазине пока нет опубликованных товаров');
+  if(!confirm('Заполнить ячейки товарами магазина? Названия, цены и картинки в ячейках-товарах заменятся. Ячейки с текстом останутся.'))return;
+  const order=[];ps.forEach(p=>{if(!order.includes(p.category||''))order.push(p.category||'')});
+  ps.sort((a,b)=>order.indexOf(a.category||'')-order.indexOf(b.category||''));
+  const byName={};P.lib.forEach(c=>{const k=norm(c.name);if(k&&!(k in byName))byName[k]=c.id});
+  const L=cur(),cats=[[],[],[]];let pi=0;
+  L.slots.forEach((s,i)=>{if(s.k!=='item')return;const p=ps[pi++];if(!p){L.slots[i]={k:'empty'};return}
+    L.slots[i]={k:'item',img:byName[norm(p.title)]??null,name:p.title,price:Math.round(p.price).toLocaleString('ru-RU')+' ₽'};
+    const c=cats[Math.floor(i/6)];if(p.category&&!c.includes(p.category))c.push(p.category)});
+  cats.forEach((c,n)=>{if(c.length)L.t['h'+(n+1)]=c.slice(0,2).join(' и ')});
+  const miss=L.slots.filter(s=>s.k==='item'&&s.img==null).length;
+  dirty();render();toast(pi<ps.length?`Поместилось ${pi} из ${ps.length} товаров`:miss?`Готово. Без картинки: ${miss}, выбери их вручную`:'Готово')};
+
+/* ---------- start ---------- */
+function fresh(kind){const d=clone(DEF[kind]);d.qr={site:location.origin.includes('localhost')?'https://3dmew.ru':location.origin,max:P.info.max_link||''};
+  if(kind==='booklet'){const byName={};P.lib.forEach(c=>{const k=norm(c.name);if(k&&!(k in byName))byName[k]=c.id});d.slots.forEach(s=>{if(s.k==='item')s.img=byName[norm(s.name)]??null})}
+  return d}
+function upgrade(kind,v){const d=fresh(kind);if(!v||typeof v!=='object')return d;
+  return {...d,...v,t:{...d.t,...(v.t||{})},img:{...d.img,...(v.img||{})},qr:{...d.qr,...(v.qr||{})},...(kind==='booklet'?{slots:Array.isArray(v.slots)&&v.slots.length===18?v.slots:d.slots}:{})}}
+async function boot(){let u=null;try{u=await api('/api/me')}catch(e){}
+  if(!u||!u.id||!u.admin){$('app').innerHTML=`<div class="gate"><h2 style="margin-top:0">Только для администратора</h2><p class="mut">Войди в аккаунт администратора на странице <a href="/admin">управления магазином</a> и вернись сюда.</p></div>`;return}
+  let saved={};try{[P.info,saved]=await Promise.all([api('/api/shop/info'),api('/api/admin/print'),loadLib()])}catch(e){toast(e.message)}
+  P.L.card=upgrade('card',saved&&saved.card);P.L.booklet=upgrade('booklet',saved&&saved.booklet);
+  const h=location.hash.slice(1);if(h==='booklet')P.mode='booklet';render()}
+window.addEventListener('hashchange',()=>{const m=location.hash.slice(1);if(P.L.card&&(m==='card'||m==='booklet')&&m!==P.mode){P.mode=m;render()}});
+boot();
+</script>
+</body>
+</html>
