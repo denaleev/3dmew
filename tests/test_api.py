@@ -98,6 +98,6 @@ def test_games_page_and_scripts():
     c = client()
     r = c.get("/igry")
     assert r.status_code == 200 and "МЯУ-АРКАДА" in r.text
-    for name in ("core", "previews", "blocks", "snake", "run", "bridge"):
+    for name in ("core", "previews", "blocks", "snake", "run", "bridge", "fly", "stack", "sort", "mem", "rhythm", "pixel"):
         assert f"/games/{name}.js" in r.text
         assert c.get(f"/games/{name}.js").status_code == 200
