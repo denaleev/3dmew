@@ -23,6 +23,9 @@ nav.tabs button.on{color:var(--acc);border-color:var(--acc)}
 nav.tabs b.soft{background:#e9d5f0;color:var(--acc)}
 nav.tabs b{background:#e8508a;color:#fff;border-radius:99px;font-size:11px;padding:1px 6px;margin-left:4px}
 nav.tabs b:empty{display:none}
+nav.tabs.sub{border-top:1px solid var(--line);gap:6px;padding-top:6px;padding-bottom:6px}
+nav.tabs.sub button{border:0;border-radius:99px;padding:6px 13px;font-size:13.5px}
+nav.tabs.sub button.on{background:var(--soft);color:var(--acc)}
 main{max-width:1400px;margin:0 auto;padding:16px}
 .btn{border:0;border-radius:11px;padding:9px 14px;font:inherit;font-weight:700;cursor:pointer;background:#f7ece2;color:var(--text);display:inline-flex;align-items:center;gap:6px;text-decoration:none;white-space:nowrap}
 .btn:hover{filter:brightness(.96)}.btn:disabled{opacity:.5;cursor:default}
@@ -87,20 +90,16 @@ td input.inl{width:84px;font:inherit;padding:4px 6px;border:1.5px solid var(--li
 <header><div class="hw"><img src="/img/logo-160.png" alt="" style="height:40px;width:auto"><h1 id="hName">Управление магазином</h1><div class="sp"></div>
   <a class="btn sm" href="/">🛍 Витрина</a><a class="btn sm" href="/builder">🎨 Конструктор карточек</a><a class="btn sm" href="/admin/print">🖨 Визитки и буклет</a><span class="mut" id="who"></span></div>
   <nav class="tabs" id="tabs">
-    <button data-t="orders" class="on">📦 Заказы<b id="bOrders"></b></button>
-    <button data-t="queue">🖨 Очередь печати</button>
-    <button data-t="requests">💡 Заявки<b id="bReq"></b></button>
-    <button data-t="products">🏷 Товары</button>
-    <button data-t="cats">🗂 Категории</button>
-    <button data-t="colors">🎨 Цвета</button>
-    <button data-t="carts">🛒 Корзины<b id="bCarts" class="soft"></b></button>
-    <button data-t="reviews">⭐ Отзывы<b id="bRev"></b></button>
-    <button data-t="feedback">✉️ Сообщения<b id="bFb"></b></button>
-    <button data-t="stats">📊 Статистика</button>
-    <button data-t="settings">⚙️ Настройки</button>
-  </nav></header>
+    <button data-g="orders" class="on" title="Заказы, очередь печати и заявки клиентов">📦 Заказы<b id="gOrders"></b></button>
+    <button data-g="products" title="Товары, категории и цвета">🏷 Товары</button>
+    <button data-g="stats" title="Статистика, корзины и отзывы">📊 Статистика<b id="gStats"></b></button>
+    <button data-g="feedback">✉️ Сообщения<b id="bFb"></b></button>
+    <button data-g="library" title="Все фото и видео сайта">📚 Библиотека</button>
+    <button data-g="settings">⚙️ Настройки</button>
+  </nav><nav class="tabs sub hide" id="sub"></nav></header>
 <main id="main"></main>
 <div class="toast" id="toast"></div>
+<script src="/js/library.js"></script>
 <script>
 "use strict";
 const $=id=>document.getElementById(id);
@@ -130,15 +129,25 @@ async function boot(){let u=null;try{u=await api('/api/me')}catch(e){}
   try{const i=await api('/api/shop/info');A.labels=i.order_statuses;A.rlabels=i.request_statuses;$('hName').textContent=i.name+' · управление';
     if(i.favicon_v)document.querySelectorAll('link[rel=icon],link[rel=apple-touch-icon]').forEach(l=>l.href=l.href.split('?')[0]+'?v='+i.favicon_v)}catch(e){}
   const h=location.hash.slice(1);if(h)A.tab=h.split('/')[0];show(A.tab);badges()}
-document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>show(b.dataset.t));
+/* sections: related screens are tabs of one section, so the work stays in one window */
+const GROUPS={orders:[['orders','📦 Заказы','new'],['queue','🖨 Очередь печати'],['requests','💡 Заявки','req']],
+  products:[['products','🏷 Товары'],['cats','🗂 Категории'],['colors','🎨 Цвета']],
+  stats:[['stats','📊 Обзор'],['carts','🛒 Корзины','carts'],['reviews','⭐ Отзывы','rev']]};
+const groupOf=t=>Object.keys(GROUPS).find(g=>GROUPS[g].some(x=>x[0]===t))||t;
+const VIEWS={orders,queue,requests,products,stats,settings,colors,feedback,cats,carts,reviews,library};
+A.bd={};A.last={};
+document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>{const g=b.dataset.g;show(GROUPS[g]?(A.last[g]||GROUPS[g][0][0]):g)});
+$('sub').onclick=e=>{const b=e.target.closest('[data-t]');if(b)show(b.dataset.t)};
 window.addEventListener('hashchange',()=>{const t=location.hash.slice(1).split('/')[0];if(t&&t!==A.tab)show(t)});
-function show(t){A.tab=t;history.replaceState(null,'','#'+t);document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.t===t));
-  ({orders,queue,requests,products,stats,settings,colors,feedback,cats,carts,reviews}[t]||orders)()}
-async function badges(){try{const o=await api('/api/admin/orders?status=new&limit=1');$('bOrders').textContent=o.counts.new||'';
-  const r=await api('/api/admin/requests?status=new');$('bReq').textContent=r.counts.new||'';
-  const f=await api('/api/admin/feedback');$('bFb').textContent=f.items.filter(x=>!x.done).length||'';
-  const rv=await api('/api/admin/reviews?status=pending');$('bRev').textContent=rv.counts.pending||'';
-  const c=await api('/api/admin/carts?days=7');$('bCarts').textContent=c.items.length||''}catch(e){}}
+function show(t){if(!VIEWS[t])t='orders';A.tab=t;const g=groupOf(t);if(GROUPS[g])A.last[g]=t;history.replaceState(null,'','#'+t);
+  document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.g===g));
+  $('sub').classList.toggle('hide',!GROUPS[g]);drawSub();VIEWS[t]()}
+function drawSub(){const g=groupOf(A.tab);if(!GROUPS[g])return;
+  $('sub').innerHTML=GROUPS[g].map(([t,l,b])=>`<button data-t="${t}" class="${t===A.tab?'on':''}">${l}${b?`<b class="${b==='carts'?'soft':''}">${A.bd[b]||''}</b>`:''}</button>`).join('')}
+async function badges(){try{const [o,r,f,rv,c]=await Promise.all([api('/api/admin/orders?status=new&limit=1'),api('/api/admin/requests?status=new'),api('/api/admin/feedback'),
+    api('/api/admin/reviews?status=pending'),api('/api/admin/carts?days=7')]);
+  A.bd={new:o.counts.new||0,req:r.counts.new||0,rev:rv.counts.pending||0,carts:c.items.length||0};
+  $('gOrders').textContent=(A.bd.new+A.bd.req)||'';$('gStats').textContent=A.bd.rev||'';$('bFb').textContent=f.items.filter(x=>!x.done).length||'';drawSub()}catch(e){}}
 setInterval(()=>{badges();if(A.tab==='orders'&&!A.oSel)loadOrders()},60000);
 
 /* ---------- orders ---------- */
@@ -414,7 +423,7 @@ const swb=c=>c.thumb?`background-image:url('${esc(c.thumb)}')`:(c.hex2?`backgrou
 async function colors(){$('main').innerHTML='<div class="empty">…</div>';let cs;try{cs=await api('/api/admin/colors')}catch(e){return}
   const MTYPES=[...new Set(['PLA','PLA Matte','Silk PLA','PETG','ABS','TPU'].concat(cs.map(c=>(c.material||'').trim()).filter(Boolean)))];
   const row=c=>`<div class="card col" data-id="${c?c.id:''}" style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-start;margin-bottom:10px">
-    <label style="cursor:pointer;text-align:center;font-size:12px;color:var(--muted)"><div class="cph" style="width:96px;height:96px;border-radius:14px;background-size:cover;background-position:center;${c?swb(c).replace(c.thumb||'§',c.photo||c.thumb||''):'background:#f3e8dc'}"></div>📷 фото пластика<input type="file" accept="image/*" data-k="photo" hidden></label>
+    <div data-k="photo" title="Выбрать фото из библиотеки" style="cursor:pointer;text-align:center;font-size:12px;color:var(--muted)"><div class="cph" style="width:96px;height:96px;border-radius:14px;background-size:cover;background-position:center;${c?swb(c).replace(c.thumb||'§',c.photo||c.thumb||''):'background:#f3e8dc'}"></div>📚 фото из библиотеки</div>
     <div style="flex:1;min-width:240px"><div class="row"><label class="f"><span>Название цвета</span><input data-k="name" value="${esc(c?c.name:'')}" placeholder="напр. Silk розовый"></label>
       <label class="f"><span>Тип пластика</span><select data-k="mtype">${MTYPES.map(m=>`<option ${c&&c.material===m?'selected':''}>${esc(m)}</option>`).join('')}<option value="__own">＋ Свой тип…</option></select>
         <input data-k="material" class="hide" value="${esc(c?c.material:'')}" placeholder="напр. PLA+ или Wood PLA" style="margin-top:6px"></label></div>
@@ -430,14 +439,22 @@ async function colors(){$('main').innerHTML='<div class="empty">…</div>';let c
   document.querySelectorAll('.col').forEach(el=>{const id=el.dataset.id,g=k=>el.querySelector(`[data-k="${k}"]`);
     const mt=g('mtype'),own=()=>{g('material').classList.toggle('hide',mt.value!=='__own');if(mt.value!=='__own')g('material').value=mt.value};
     if(!el.dataset.id&&!g('material').value)g('material').value=mt.value;mt.onchange=()=>{own();if(mt.value==='__own'){g('material').value='';g('material').focus()}};own();
-    g('photo').addEventListener('change',e=>{const f=e.target.files[0];if(f)el.querySelector('.cph').style.backgroundImage=`url('${URL.createObjectURL(f)}')`});
+    g('photo').onclick=async()=>{const r=await libPickFile('Фото пластика');if(!r)return;el._photo=r.file;el.querySelector('.cph').style.backgroundImage=`url('${URL.createObjectURL(r.file)}')`};
     el.querySelector('[data-save]').onclick=async()=>{const fd=new FormData();
       ['name','material','note','sort','kg_price'].forEach(k=>fd.append(k,g(k).value));fd.append('hex',g('hex').value);fd.append('hex2',g('two').checked?g('hex2').value:'');fd.append('active',g('active').checked?'1':'0');
-      if(g('photo').files[0])fd.append('photo',g('photo').files[0]);
+      if(el._photo)fd.append('photo',el._photo,el._photo.name);
       if(!g('name').value.trim())return toast('Назови цвет');if(!g('material').value.trim())return toast('Укажи тип пластика');
       if(!(parseFloat(String(g('kg_price').value).replace(',','.'))>0))return toast('Укажи цену пластика за кг: по ней считается цена');
       try{await api(id?'/api/admin/colors/'+id:'/api/admin/colors',{method:id?'PATCH':'POST',form:fd});toast('Сохранено');colors()}catch(e){toast(e.message)}};
     const d=el.querySelector('[data-del]');if(d)d.onclick=async()=>{if(!confirm('Удалить цвет из палитры? Он пропадёт и из товаров.'))return;await api('/api/admin/colors/'+id,{method:'DELETE'});colors()}})}
+
+/* ---------- media library ---------- */
+function library(){$('main').innerHTML=`<div class="card"><h2>📚 Библиотека</h2><div class="mut">Все фото и видео сайта в одном месте: загруженные сюда, фото и готовые карточки из конструктора, фото без фона после нейросети, фото и видео товаров, фото пластика и картинки от покупателей. Конструктор карточек, цвета, визитки и буклет, значок сайта берут картинки отсюда, а новые файлы, загруженные там, тоже попадают сюда.</div></div><div id="libRoot"></div>`;
+  if(!window.Library){$('libRoot').innerHTML='<div class="empty">Не загрузился модуль библиотеки. Обнови страницу.</div>';return}
+  Library.mount($('libRoot'),{toast})}
+/* pick one picture from the library and get it as a file for the usual upload */
+async function libPickFile(title){if(!window.Library){toast('Не загрузился модуль библиотеки');return null}
+  const sel=await Library.pick({kind:'image',title});if(!sel||!sel.length)return null;try{return{file:await Library.file(sel[0]),item:sel[0]}}catch(e){toast(e.message);return null}}
 
 /* ---------- feedback messages ---------- */
 async function feedback(){$('main').innerHTML='<div class="empty">…</div>';let r;try{r=await api('/api/admin/feedback')}catch(e){return}
@@ -480,11 +497,11 @@ async function settings(){$('main').innerHTML='<div class="empty">…</div>';let
   <div class="card" style="margin-top:16px"><h2>🖼 Значок сайта (favicon)</h2><div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
     <img id="favImg" src="/api/shop/favicon/180.png?t=${Date.now()}" alt="" style="width:64px;height:64px;border-radius:12px;border:1px solid var(--line)">
     <div class="mut" style="flex:1;min-width:220px">Картинка во вкладке браузера и на экране телефона. Подойдёт любая: PNG, JPG, WEBP. Она обрежется до квадрата, лучше брать простую и контрастную.</div>
-    <label class="btn">📷 Загрузить<input type="file" id="favFile" accept="image/*,.ico" hidden></label><button class="btn" id="favReset">↺ Логотип по умолчанию</button></div></div>
+    <button class="btn" id="favFile">📚 Выбрать из библиотеки</button><button class="btn" id="favReset">↺ Логотип по умолчанию</button></div></div>
   <div class="card" style="margin-top:16px" id="maxBox"><h2>📣 Бот MAX</h2><div class="mut">Загружаю…</div></div>`;
   maxBox();
-  $('favFile').addEventListener('change',async e=>{const f=e.target.files[0];if(!f)return;const fd=new FormData();fd.append('file',f,f.name);
-    try{await api('/api/admin/favicon',{method:'PUT',form:fd});setFav();toast('Значок обновлён')}catch(er){toast(er.message)}});
+  $('favFile').onclick=async()=>{const r=await libPickFile('Значок сайта');if(!r)return;const fd=new FormData();fd.append('file',r.file,r.file.name);
+    try{await api('/api/admin/favicon',{method:'PUT',form:fd});setFav();toast('Значок обновлён')}catch(er){toast(er.message)}};
   $('tgTest').onclick=async()=>{$('tgRes').textContent='⏳ Отправляю…';try{await api('/api/admin/telegram/test',{method:'POST'});$('tgRes').innerHTML='<b style="color:var(--ok)">✓ Отправлено, проверь Telegram</b>'}catch(e){$('tgRes').innerHTML='<b style="color:var(--bad)">'+esc(e.message)+'</b>'}};
   $('calcDef').onclick=()=>{if(!confirm('Подставить стандартные параметры калькулятора? Твои значения заменятся в форме, а сохранятся только после «💾 Сохранить настройки».'))return;const d=s.calc_defaults;
     document.querySelectorAll('[data-c]').forEach(el=>{const k=el.dataset.c;el.value=k==='materials'?Object.entries(d.materials).map(([n,p])=>n+' = '+p).join('\n'):d[k]});$('nice').checked=!!d.nice_price;toast('Подставил стандартные. Нажми «Сохранить», чтобы применить')};
