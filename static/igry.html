@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Мяу-аркада — 3DМяу</title>
+<meta name="description" content="Мини-игры с котиком 3DМяу для детей и подростков: без рекламы, покупок и регистрации.">
+<link rel="icon" type="image/png" href="/api/shop/favicon/64.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Rubik:wght@600;800;900&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#2b0a3d;--mag:#ff2e88;--pk:#ff7ac6;--or:#ff9f1c;--yl:#ffd23f;--cy:#22e0d0;--lav:#f6e2ff}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{font-family:Rubik,Nunito,system-ui,sans-serif;color:var(--ink);background:radial-gradient(circle at 15% 8%,#ff5fb0 0,transparent 35%),radial-gradient(circle at 88% 18%,#ffb23f 0,transparent 30%),radial-gradient(circle at 50% 105%,#22e0d0 0,transparent 40%),linear-gradient(160deg,#7a1fd1,#3d0a72);min-height:100%}
+html{background:#3d0a72}
+body:before{content:"";position:fixed;inset:0;background-image:radial-gradient(#ffffff22 2px,transparent 2.5px);background-size:26px 26px;pointer-events:none}
+button{font:inherit;color:inherit;cursor:pointer}
+.hide{display:none!important}
+.pill{background:#fff;border:3px solid var(--ink);box-shadow:0 4px 0 var(--ink);border-radius:99px;padding:5px 13px;font-weight:900;font-size:17px;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.sq{width:46px;height:46px;flex:none;border-radius:15px;background:#fff;border:3px solid var(--ink);box-shadow:0 4px 0 var(--ink);display:grid;place-items:center;font-size:20px;font-weight:900;text-decoration:none;color:var(--ink)}
+.sq:active,.play:active,.ctl button:active{transform:translateY(3px);box-shadow:0 1px 0 var(--ink)}
+.play{background:linear-gradient(180deg,#ff6fb5,#ff2e88);color:#fff;border:3px solid var(--ink);box-shadow:0 5px 0 var(--ink);border-radius:99px;font-weight:900;display:flex;align-items:center;justify-content:center;gap:8px;text-shadow:0 2px 0 var(--ink);font-size:22px;padding:10px 22px}
+.title{font-weight:900;color:#fff;-webkit-text-stroke:3px var(--ink);paint-order:stroke fill;text-shadow:0 5px 0 var(--ink);letter-spacing:.5px}
+.chip{border:3px solid var(--ink);border-radius:99px;padding:4px 12px;font-weight:800;font-size:15px;background:#fff}
+.chip.on{background:var(--yl)}
+/* витрина */
+.hub{position:relative;max-width:1280px;margin:0 auto;padding:16px 16px 40px}
+.top{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.top h1{font-size:clamp(34px,6vw,64px);line-height:1;flex:1;min-width:260px}
+.top h1 b{color:var(--yl)}
+.opts{display:flex;flex-direction:column;align-items:flex-end;gap:10px}
+.diff{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.diff span{color:#fff;font-weight:900;text-shadow:0 2px 0 var(--ink)}
+.daily{font-size:15px;background:var(--yl);white-space:normal}
+.daily.done{background:#9dff4a}
+.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:22px;margin-top:24px}
+.card{background:linear-gradient(180deg,#f9e6ff,#e6c4ff);border:4px solid var(--ink);box-shadow:0 6px 0 var(--ink);border-radius:28px;padding:12px;display:flex;flex-direction:column;gap:10px;cursor:pointer;text-decoration:none;color:var(--ink)}
+.card:hover{transform:translateY(-3px)}
+.nm{position:relative;margin:6px auto 0;background:#fff;border:3px solid var(--ink);box-shadow:0 4px 0 var(--ink);border-radius:16px;padding:4px 14px;font-weight:900;font-size:20px;text-align:center}
+.nm:before,.nm:after{content:"";position:absolute;top:-14px;border-left:10px solid transparent;border-right:10px solid transparent;border-bottom:14px solid var(--ink)}
+.nm:before{left:12px}.nm:after{right:12px}
+.pv{border:3px solid var(--ink);border-radius:16px;overflow:hidden;background:#2b0a3d;aspect-ratio:3/4}
+.pv svg{display:block;width:100%;height:100%}
+.meta{display:flex;justify-content:space-between;gap:6px;flex-wrap:wrap}
+.meta .chip{font-size:13px}
+.foot{color:#fff;text-align:center;font-weight:800;font-size:14px;text-shadow:0 2px 0 var(--ink);margin-top:26px;line-height:1.6}
+.foot a{color:#fff}
+@media(max-width:1000px){.cards{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:700px){.opts{align-items:stretch;width:100%}.diff{justify-content:center}.cards{gap:12px}.card{padding:8px;border-radius:22px;gap:6px}.nm{font-size:15px;padding:3px 8px}.nm:before,.nm:after{display:none}.meta{display:none}.play{font-size:17px;padding:7px 12px}}
+/* экран игры */
+.game{position:fixed;inset:0;display:flex;flex-direction:column;z-index:5;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+.hud{display:flex;align-items:center;gap:8px;padding:10px 12px}
+.hud .gt{flex:1;text-align:center;font-size:clamp(18px,3vw,30px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hud .pill{font-size:15px;padding:4px 10px}
+.stage{flex:1;position:relative;min-height:0;margin:0 10px}
+.stage canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none;border-radius:22px}
+.ctl{display:flex;justify-content:center;gap:8px;padding:10px 8px 12px;flex-wrap:nowrap}
+.ctl button{width:64px;height:58px;border-radius:18px;background:#fff;border:3px solid var(--ink);box-shadow:0 4px 0 var(--ink);font-size:24px;font-weight:900;touch-action:none;user-select:none;-webkit-user-select:none}
+.ctl button.wide{width:auto;padding:0 12px;font-size:16px}
+.keys{color:#fff;text-align:center;font-weight:800;font-size:14px;text-shadow:0 2px 0 var(--ink);padding:6px 10px 12px}
+@media(max-width:520px){.hud .gt{display:none}.hud{justify-content:space-between}.box{padding:14px;gap:8px}.box h2{font-size:24px}.box .cat{width:64px;height:64px}.box p{font-size:14px}.box .big{font-size:34px}.play{font-size:19px}}
+@media(hover:hover) and (pointer:fine){.ctl.touch{display:none}}
+@media(hover:none),(pointer:coarse){.keys{display:none}}
+.panel{position:absolute;inset:0;display:grid;place-items:center;background:#2b0a3d99;border-radius:22px;padding:14px;z-index:3}
+.box{background:linear-gradient(180deg,#f9e6ff,#e6c4ff);border:4px solid var(--ink);box-shadow:0 6px 0 var(--ink);border-radius:26px;padding:20px;max-width:420px;width:100%;text-align:center;display:flex;flex-direction:column;gap:12px;align-items:center;max-height:100%;overflow:auto}
+.box h2{font-size:30px}
+.box p{font-weight:700;font-size:15px;line-height:1.45}
+.box .modes{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
+.box .big{font-size:44px;font-weight:900}
+.box .cat{width:96px;height:96px}
+.box .row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+.box .play.alt{background:#fff;color:var(--ink);text-shadow:none}
+.toast{position:fixed;left:50%;top:76px;transform:translateX(-50%);z-index:20;background:var(--yl);border:3px solid var(--ink);box-shadow:0 4px 0 var(--ink);border-radius:18px;padding:8px 16px;font-weight:900;text-align:center;max-width:90vw}
+</style>
+</head>
+<body>
+<div class="hub" id="hub">
+  <div class="top">
+    <a class="sq" href="/" title="В магазин" aria-label="В магазин">⌂</a>
+    <h1 class="title"><b>3D</b> МЯУ-АРКАДА</h1>
+    <div class="opts">
+      <div class="diff" id="diff"><span>Сложность:</span>
+        <button class="chip" data-d="kid">🐣 Малыш</button><button class="chip" data-d="player">🎮 Игрок</button><button class="chip" data-d="pro">🔥 Профи</button>
+        <button class="sq" id="mute" title="Звук" aria-label="Звук" style="width:40px;height:40px;font-size:18px">🔊</button>
+      </div>
+      <div class="pill daily" id="daily"></div>
+    </div>
+  </div>
+  <div class="cards" id="cards"></div>
+  <div class="foot">Без рекламы, покупок и регистрации · Рекорды хранятся только на этом устройстве · Через 20 минут игры котик предложит передышку<br><a href="/">← Вернуться в магазин 3DМяу</a></div>
+</div>
+
+<div class="game hide" id="game">
+  <div class="hud">
+    <button class="sq" id="gBack" aria-label="Все игры">⌂</button>
+    <button class="sq" id="gPause" aria-label="Пауза">⏸</button>
+    <div class="gt title" id="gTitle"></div>
+    <span class="pill" id="gL"></span><span class="pill" id="gR"></span>
+  </div>
+  <div class="stage" id="stage"><canvas id="cv"></canvas>
+    <div class="panel hide" id="panel"><div class="box" id="box"></div></div>
+  </div>
+  <div class="ctl" id="ctl"></div>
+  <div class="keys" id="keys"></div>
+</div>
+
+<script src="/games/core.js"></script>
+<script src="/games/previews.js"></script>
+<script src="/games/blocks.js"></script>
+<script src="/games/snake.js"></script>
+<script src="/games/run.js"></script>
+<script src="/games/bridge.js"></script>
+<script>
+'use strict';
+(() => {
+const $ = id => document.getElementById(id);
+const ORDER = ['blocks', 'snake', 'run', 'bridge'];
+const BREAK_MS = 20 * 60 * 1000;
+const DAILY = [
+  {game: 'blocks', metric: 'lines', target: 30, text: 'Убери 30 линий в Мяу-блоках'},
+  {game: 'snake', metric: 'length', target: 25, text: 'Вырасти змейку до длины 25'},
+  {game: 'run', metric: 'meters', target: 1500, text: 'Пробеги 1 500 м в Мяу-ране'},
+  {game: 'bridge', metric: 'stars', target: 6, text: 'Собери 6 звёзд в Мур-мосте'},
+];
+const daily = () => DAILY[Math.floor(Mya.rng(Mya.today())() * DAILY.length)];
+const dailyDone = () => Mya.store.get('daily', '') === Mya.today();
+
+function toast(t) {
+  const d = document.createElement('div'); d.className = 'toast'; d.textContent = t; document.body.appendChild(d);
+  setTimeout(() => d.remove(), 2600);
+}
+
+// ---------- витрина ----------
+function renderHub() {
+  const d = Mya.difficulty();
+  document.querySelectorAll('#diff .chip').forEach(b => b.classList.toggle('on', b.dataset.d === d));
+  $('mute').textContent = Mya.muted() ? '🔇' : '🔊';
+  const dl = daily();
+  $('daily').textContent = (dailyDone() ? '✅ Испытание дня выполнено: ' : '⚡ Испытание дня: ') + dl.text;
+  $('daily').classList.toggle('done', dailyDone());
+  $('cards').innerHTML = ORDER.map(id => {
+    const G = Mya.games[id];
+    return `<a class="card" href="#${id}"><div class="nm">${G.title}</div><div class="pv">${Mya.previews[id]()}</div>
+      <div class="meta"><span class="chip">🏆 ${G.recordText()}</span><span class="chip">${G.subText()}</span></div>
+      <div class="play">▶ Играть</div></a>`;
+  }).join('');
+}
+$('diff').addEventListener('click', e => {
+  const b = e.target.closest('[data-d]'); if (b) { Mya.store.set('diff', b.dataset.d); renderHub(); }
+});
+$('mute').onclick = () => { Mya.store.set('mute', !Mya.muted()); renderHub(); };
+
+// ---------- экран игры ----------
+const cv = $('cv'), g = cv.getContext('2d');
+let G = null, inst = null, state = 'idle', mode = null, last = 0, raf = 0, playMs = 0;
+let W = 0, H = 0;
+
+function resize() {
+  const r = $('stage').getBoundingClientRect(), dpr = Math.min(2, window.devicePixelRatio || 1);
+  W = r.width; H = r.height; cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  if (inst) { inst.resize(W, H); if (state !== 'play') inst.draw(g); }
+}
+window.addEventListener('resize', resize);
+
+const api = {
+  hud(l, r) { $('gL').textContent = l; $('gR').textContent = r; $('gL').classList.toggle('hide', !l); $('gR').classList.toggle('hide', !r); },
+  beep: Mya.beep,
+  get diff() { return Mya.difficulty(); },
+  get mode() { return mode; },
+  canvas: cv,
+  get running() { return state === 'play'; },
+  challenge(metric, value) {
+    const dl = daily();
+    if (dl.game === G.id && dl.metric === metric && value >= dl.target && !dailyDone()) {
+      Mya.store.set('daily', Mya.today()); toast('⚡ Испытание дня выполнено! Котик гордится тобой 🧡');
+    }
+  },
+  over(o) { state = 'over'; showOver(o); },
+};
+
+function openGame(id) {
+  G = Mya.games[id]; if (!G) return;
+  $('hub').classList.add('hide'); $('game').classList.remove('hide');
+  $('gTitle').textContent = G.title.toUpperCase();
+  $('ctl').className = 'ctl' + (G.touchOnly === false ? '' : ' touch');
+  $('ctl').innerHTML = (G.controls || []).map(c => `<button class="${c.wide ? 'wide' : ''}" data-k="${c.k}" aria-label="${c.aria || c.l}">${c.l}</button>`).join('');
+  $('ctl').classList.toggle('hide', !(G.controls || []).length);
+  $('keys').textContent = G.keys || '';
+  inst = G.create(api);
+  mode = Mya.store.get('mode.' + id, G.modes[0].id);
+  if (!G.modes.some(m => m.id === mode)) mode = G.modes[0].id;
+  resize();
+  showStart();
+}
+function closeGame() {
+  if (inst && inst.destroy) inst.destroy();
+  inst = null; G = null; state = 'idle'; cancelAnimationFrame(raf);
+  $('game').classList.add('hide'); $('hub').classList.remove('hide'); $('panel').classList.add('hide');
+  renderHub();
+}
+
+function panel(html) { $('box').innerHTML = html; $('panel').classList.remove('hide'); }
+function showStart() {
+  state = 'menu'; cancelAnimationFrame(raf);
+  inst.preview ? inst.preview(mode) : inst.reset(mode); inst.draw(g);
+  const rec = G.recordText(mode);
+  panel(`<img class="cat" src="data:image/svg+xml;charset=utf-8,${encodeURIComponent(Mya.catSVG(96))}" alt="">
+    <h2 class="title">${G.title.toUpperCase()}</h2>
+    <div class="modes">${G.modes.map(m => `<button class="chip ${m.id === mode ? 'on' : ''}" data-m="${m.id}">${m.name}</button>`).join('')}</div>
+    <p id="mDesc">${G.modes.find(m => m.id === mode).desc}</p>
+    <p>🏆 Рекорд: <b>${rec}</b></p>
+    ${G.extra ? G.extra(mode) : ''}
+    <button class="play" id="go">▶ Играть</button>
+    <p style="font-size:13px;opacity:.8">${G.hint}</p>`);
+  $('box').querySelectorAll('[data-m]').forEach(b => b.onclick = () => { mode = b.dataset.m; Mya.store.set('mode.' + G.id, mode); showStart(); });
+  $('go').onclick = start;
+}
+function start() {
+  $('panel').classList.add('hide'); inst.reset(mode); inst.start && inst.start(); state = 'play'; last = performance.now(); loop(last);
+}
+function pause() {
+  if (state !== 'play') return; state = 'pause'; cancelAnimationFrame(raf);
+  panel(`<h2 class="title">ПАУЗА</h2><div class="row"><button class="play" id="res">▶ Дальше</button><button class="play alt" id="rst">↺ Заново</button><button class="play alt" id="men">☰ Меню</button></div>`);
+  $('res').onclick = resume; $('rst').onclick = start; $('men').onclick = showStart;
+}
+function resume() { $('panel').classList.add('hide'); state = 'play'; last = performance.now(); loop(last); }
+function showOver(o) {
+  cancelAnimationFrame(raf); inst.draw(g);
+  const better = o.score != null && Mya.saveRecord(G.id, mode, o.score, o.lowerBetter);
+  panel(`<img class="cat" src="data:image/svg+xml;charset=utf-8,${encodeURIComponent(Mya.catSVG(96))}" alt="">
+    <h2 class="title">${o.title || 'ИГРА ОКОНЧЕНА'}</h2>
+    ${o.big != null ? `<div class="big">${o.big}</div>` : ''}
+    ${better ? '<div class="pill" style="background:#9dff4a">🏆 Новый рекорд!</div>' : ''}
+    <p>${o.text || ''}</p>
+    <div class="row">${o.next ? '<button class="play" id="nxt">▶ Дальше</button>' : ''}<button class="play ${o.next ? 'alt' : ''}" id="again">↺ ${o.again || 'Ещё раз'}</button><button class="play alt" id="men">☰ Меню</button></div>`);
+  $('again').onclick = start; $('men').onclick = showStart;
+  if (o.next) $('nxt').onclick = () => { o.next(); start(); };
+}
+function breakTime() {
+  state = 'pause'; cancelAnimationFrame(raf);
+  panel(`<img class="cat" src="data:image/svg+xml;charset=utf-8,${encodeURIComponent(Mya.catSVG(96))}" alt="">
+    <h2 class="title">МЯУ-ПЕРЕДЫШКА</h2><p>Ты играешь уже 20 минут. Котик предлагает потянуться, поморгать и попить водички 💧</p>
+    <div class="row"><button class="play" id="res">▶ Ещё немного</button><button class="play alt" id="men">⌂ Ко всем играм</button></div>`);
+  $('res').onclick = resume; $('men').onclick = () => { location.hash = ''; };
+}
+
+function loop(t) {
+  if (state !== 'play') return;
+  const dt = Math.min(50, t - last); last = t;
+  playMs += dt;
+  inst.update(dt / 1000);
+  if (state === 'play') inst.draw(g);
+  if (playMs >= BREAK_MS && state === 'play') { playMs = 0; breakTime(); return; }
+  raf = requestAnimationFrame(loop);
+}
+
+$('gBack').onclick = () => { location.hash = ''; };
+$('gPause').onclick = () => (state === 'play' ? pause() : state === 'pause' ? resume() : null);
+document.addEventListener('visibilitychange', () => { if (document.hidden) pause(); });
+
+const ARROWS = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', ' '];
+window.addEventListener('keydown', e => {
+  if (!inst) return;
+  if (e.key === 'Escape' || e.key === 'p' || e.key === 'з') { state === 'play' ? pause() : state === 'pause' && resume(); return; }
+  if (state === 'menu' && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); start(); return; }
+  if (ARROWS.includes(e.key)) e.preventDefault();
+  if (state === 'play') inst.key(e.code, true, e.repeat);
+});
+window.addEventListener('keyup', e => { if (inst && state === 'play') inst.key(e.code, false); });
+
+// экранные кнопки: удержание = повтор
+const held = new Map();
+$('ctl').addEventListener('pointerdown', e => {
+  const b = e.target.closest('[data-k]'); if (!b || state !== 'play') return;
+  e.preventDefault(); const k = b.dataset.k; inst.key(k, true, false);
+  const c = (G.controls || []).find(x => x.k === k);
+  if (c && c.repeat) held.set(e.pointerId, {k, t: setTimeout(function rep() { if (state === 'play') inst.key(k, true, true); held.get(e.pointerId).t = setTimeout(rep, 60); }, 170)});
+  else held.set(e.pointerId, {k});
+});
+const release = e => { const h = held.get(e.pointerId); if (!h) return; clearTimeout(h.t); held.delete(e.pointerId); if (inst) inst.key(h.k, false); };
+['pointerup', 'pointercancel', 'pointerleave'].forEach(t => $('ctl').addEventListener(t, release));
+
+// ---------- навигация по #адресу ----------
+function route() {
+  const id = location.hash.slice(1);
+  if (inst) closeGame();
+  if (Mya.games[id]) openGame(id); else renderHub();
+}
+window.addEventListener('hashchange', route);
+route();
+})();
+</script>
+</body>
+</html>

@@ -92,3 +92,12 @@ def test_oauth_start_and_bad_callback(monkeypatch):
     assert r.status_code == 302 and r.headers["location"].startswith("https://oauth.yandex.ru/authorize?")
     r = c.get("/api/auth/yandex/callback?code=x&state=forged", follow_redirects=False)
     assert r.headers["location"] == "/?login=fail"
+
+
+def test_games_page_and_scripts():
+    c = client()
+    r = c.get("/igry")
+    assert r.status_code == 200 and "МЯУ-АРКАДА" in r.text
+    for name in ("core", "previews", "blocks", "snake", "run", "bridge"):
+        assert f"/games/{name}.js" in r.text
+        assert c.get(f"/games/{name}.js").status_code == 200

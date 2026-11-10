@@ -58,6 +58,7 @@ class CachedStatic(StaticFiles):
 
 app.mount("/ai", CachedStatic(directory=settings.STATIC_DIR / "ai"), name="ai")
 app.mount("/img", CachedStatic(directory=settings.STATIC_DIR / "img"), name="img")
+app.mount("/games", StaticFiles(directory=settings.STATIC_DIR / "games"), name="games")
 
 
 @app.get("/favicon.ico", include_in_schema=False)
@@ -74,6 +75,12 @@ def page(name: str):
 def builder():
     """The card builder (with the cost calculator and the «publish in shop» button)."""
     return page("index.html")
+
+
+@app.get("/igry")
+def games_page():
+    """«Мяу-аркада»: мини-игры для детей. Без рекламы, покупок и сбора данных, рекорды только в браузере."""
+    return page("igry.html")
 
 
 @app.get("/admin")

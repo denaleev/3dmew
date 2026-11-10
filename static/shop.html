@@ -30,6 +30,8 @@ header{position:sticky;top:0;z-index:20;background:rgba(255,255,255,.94);backdro
 .btn.pri{background:linear-gradient(135deg,#f59331,#e2600c);color:#fff;box-shadow:0 3px 10px rgba(226,96,12,.22)}
 .btn.sm{padding:7px 11px;font-size:13.5px}.btn.ghost{background:none}
 .btn.big{padding:14px 20px;font-size:16px}
+.playb{background:linear-gradient(180deg,#ff6fb5,#ff2e88);color:#fff;border:2px solid #2b0a3d;box-shadow:0 3px 0 #2b0a3d;border-radius:99px;font-weight:900;text-shadow:0 1px 0 #2b0a3d}.playb:hover{filter:brightness(1.06)}.playb:active{transform:translateY(2px);box-shadow:0 1px 0 #2b0a3d}
+@media(max-width:640px){.brand{flex:none}.brand span{display:none}.hw{gap:4px}.hw .btn.sm.ghost{padding:7px 7px}.playb{padding:6px 10px;font-size:13px}}
 .cartb{position:relative}.cartb b{position:absolute;top:-6px;right:-6px;background:var(--hot);color:#fff;border-radius:99px;font-size:11px;min-width:20px;height:20px;display:grid;place-items:center;padding:0 5px}
 .cartb b:empty{display:none}
 main{max-width:1240px;margin:0 auto;padding:16px}
@@ -219,6 +221,7 @@ footer .ftext{flex-basis:100%;font-size:13px;line-height:1.55;max-width:900px}
 <header><div class="hw">
   <a class="brand" href="#/" id="homeBtn" title="На главную"><img class="lg" src="/img/logo-160.png" alt=""><span id="shopName">3D-мастерская</span></a>
   <div class="sp"></div>
+  <a class="btn sm playb" href="/igry" title="Мини-игры с котиком">🎮 Играть!</a>
   <a class="btn sm ghost" href="#about">🐾 <span class="lbl">О проекте</span></a>
   <a class="btn sm ghost" href="#custom">💡 <span class="lbl">Своя идея</span></a>
   <a class="btn sm ghost" href="#fav" id="favLink">♡ <span class="lbl">Избранное</span><b id="favN" class="cnt"></b></a>
