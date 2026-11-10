@@ -67,11 +67,11 @@ def library(user: User = Depends(current_admin), db: Session = Depends(get_db)):
                          f.created_at, can_delete=True, mime=f.mime) | {"w": f.width, "h": f.height})
 
     # photos uploaded in the card builder (the photo itself is in blobs with the same id)
-    rows = db.execute(select(Photo.id, Photo.name, Photo.size, Photo.thumb, Photo.t, BlobSet.photo_type)
+    rows = db.execute(select(Photo.id, Photo.name, Photo.size, Photo.thumb, Photo.t.label("ms"), BlobSet.photo_type)
                       .join(BlobSet, BlobSet.id == Photo.id).where(Photo.user_id == user.id, BlobSet.photo.is_not(None))).all()
     for p in rows:
         out.append(entry(f"photo-{p.id}", "photo", "image", p.name, f"/api/blobs/{p.id}/photo", p.thumb, p.size,
-                         _ms(p.t), "конструктор карточек → «Фото»", mime=p.photo_type or "image/jpeg"))
+                         _ms(p.ms), "конструктор карточек → «Фото»", mime=p.photo_type or "image/jpeg"))
 
     # finished cards saved in the builder's library
     mine: set[str] = set()
@@ -139,7 +139,7 @@ def library(user: User = Depends(current_admin), db: Session = Depends(get_db)):
 def _ms(t):
     try:
         return datetime.fromtimestamp((t or 0) / 1000, tz=timezone.utc)
-    except (OverflowError, OSError, ValueError):
+    except (OverflowError, OSError, ValueError, TypeError):
         return None
 
 
