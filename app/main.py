@@ -9,7 +9,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 
-from . import account, admin, ai, auth, catalog, maxbot, printing, seo, shop, social, store
+from . import account, admin, ai, auth, catalog, library, maxbot, printing, seo, shop, social, store
 from .config import settings
 from .db import engine
 
@@ -27,6 +27,7 @@ app.include_router(catalog.public)
 app.include_router(catalog.admin)
 app.include_router(maxbot.router)
 app.include_router(printing.router)
+app.include_router(library.router)
 app.include_router(seo.router)
 
 
@@ -58,6 +59,7 @@ class CachedStatic(StaticFiles):
 
 app.mount("/ai", CachedStatic(directory=settings.STATIC_DIR / "ai"), name="ai")
 app.mount("/img", CachedStatic(directory=settings.STATIC_DIR / "img"), name="img")
+app.mount("/js", StaticFiles(directory=settings.STATIC_DIR / "js"), name="js")
 app.mount("/games", StaticFiles(directory=settings.STATIC_DIR / "games"), name="games")
 
 

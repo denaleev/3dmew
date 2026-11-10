@@ -170,7 +170,7 @@ body.noguides .guide,body.noguides .fold{display:none}
     </div>
     <ul class="tips">
       <li>Текст правится прямо на макете: нажми на него и пиши.</li>
-      <li>Нажми на картинку, чтобы выбрать фото без фона из библиотеки. Туда попадают вырезанные фото из конструктора карточек, когда карточка сохраняется в библиотеку.</li>
+      <li>Нажми на картинку, чтобы выбрать картинку из библиотеки магазина (админка → «Библиотека»). Туда попадают и вырезанные фото из конструктора карточек, когда карточка сохраняется в библиотеку.</li>
       <li>В буклете у каждой ячейки есть кнопки: товар, текст или пустое место.</li>
       <li>«Печать / PDF» → «Сохранить как PDF», поля «Нет», масштаб 100%. Размер страницы уже с вылетами под обрез: визитка 94×54 мм, буклет 303×216 мм.</li>
     </ul>
@@ -179,10 +179,11 @@ body.noguides .guide,body.noguides .fold{display:none}
 </div>
 <div class="ov" id="pickOv"><div class="dlg">
   <div class="top"><b id="pickTitle">Выбери картинку</b><input type="search" id="pickQ" placeholder="Поиск по названию">
-    <label class="btn sm">⬆️ Загрузить PNG<input type="file" id="pickUp" accept="image/png,image/webp,image/jpeg" multiple hidden></label>
+    <label class="btn sm" title="Файлы попадут в общую библиотеку магазина">⬆️ Загрузить в библиотеку<input type="file" id="pickUp" accept="image/png,image/webp,image/jpeg" multiple hidden></label>
     <button class="btn sm" id="pickNone">Без картинки</button><button class="btn sm" id="pickClose">✕</button></div>
   <div class="pick" id="pickList"></div></div></div>
 <div class="toast" id="toast"></div>
+<script src="/js/library.js"></script>
 <script>
 "use strict";
 const $=id=>document.getElementById(id);
@@ -222,7 +223,9 @@ const cur=()=>P.L[P.mode];
 
 /* ---------- rendering ---------- */
 function T(key,tag,cls){return `<${tag||'div'} class="${cls||''}" contenteditable="plaintext-only" spellcheck="false" data-t="${key}">${esc(cur().t[key]??'')}</${tag||'div'}>`}
-function imgSrc(v){if(v==='logo')return '/img/logo-512.png';const c=P.lib.find(x=>x.id===v);return c?c.png:(typeof v==='number'?`/api/admin/cutouts/${v}/png`:'')}
+// pictures come from the shop's library (admin → «Библиотека»); old layouts keep numeric ids of cut-outs
+const kid=v=>typeof v==='number'?'cut-'+v:v;
+function imgSrc(v){if(v==='logo')return '/img/logo-512.png';const c=P.lib.find(x=>x.id===kid(v));return c?c.png:(typeof v==='number'?`/api/admin/cutouts/${v}/png`:'')}
 function IM(key,cls,slot){const v=slot!=null?cur().slots[slot].img:cur().img[key];const src=v!=null?imgSrc(v):'';
   return `<div class="im ${cls||''} ${src?'':'none'}" data-img="${key||''}" ${slot!=null?`data-slot="${slot}"`:''}>${src?`<img src="${esc(src)}" alt="">`:''}</div>`}
 function QR(which){const L=cur(),u=(which==='max'?L.qr.max:L.qr.site)||'';
@@ -290,27 +293,30 @@ window.addEventListener('beforeunload',e=>{if(Object.values(P.dirty).some(Boolea
 
 /* ---------- picture library ---------- */
 let PK=null;
-async function loadLib(){try{P.lib=await api('/api/admin/cutouts')}catch(e){P.lib=[]}}
+async function loadLib(force){try{const r=window.Library?await Library.list(force):await api('/api/admin/library');
+  P.lib=r.items.filter(x=>x.kind==='image').map(x=>({id:x.key,name:x.name,thumb:x.thumb||x.url,png:x.url,src:x.src,del:x.del,item:x}))}catch(e){P.lib=[]}}
+// the booklet is filled with cut-outs (photos without background) named like the product
+function byNameMap(){const m={};P.lib.filter(c=>c.src==='cutout').forEach(c=>{const k=norm(c.name);if(k&&!(k in m))m[k]=c.id});return m}
 function openPick(target){PK=target;$('pickTitle').textContent=target?'Выбери картинку':'Библиотека картинок';$('pickNone').classList.toggle('hide',!target);
   $('pickQ').value='';drawPick();$('pickOv').classList.add('on');setTimeout(()=>$('pickQ').focus(),50)}
-function curVal(){if(!PK)return undefined;return PK.slot!=null?cur().slots[PK.slot].img:cur().img[PK.key]}
+function curVal(){if(!PK)return undefined;return kid(PK.slot!=null?cur().slots[PK.slot].img:cur().img[PK.key])}
 function drawPick(){const q=$('pickQ').value.trim().toLowerCase(),v=curVal();
   const items=[{id:'logo',name:'Логотип магазина',thumb:'/img/logo-512.png'}].concat(P.lib).filter(c=>!q||c.name.toLowerCase().includes(q));
   $('pickList').innerHTML=items.length?items.map(c=>`<div class="o ${v===c.id?'on':''}" data-id="${c.id}" title="${esc(c.name)}"><img src="${esc(c.thumb)}" loading="lazy" alt="">
-    <div class="nm">${esc(c.name)}</div>${c.id!=='logo'?`<button class="x" data-del="${c.id}" title="Удалить из библиотеки">🗑</button>`:''}</div>`).join('')
-    :`<div class="empty">Пока пусто. Сохрани карточку с вырезанным фото в конструкторе карточек или загрузи PNG.</div>`}
+    <div class="nm">${esc(c.name)}</div>${c.del?`<button class="x" data-del="${c.id}" title="Удалить из библиотеки">🗑</button>`:''}</div>`).join('')
+    :`<div class="empty">Пока пусто. Сохрани карточку с вырезанным фото в конструкторе карточек или загрузи картинку в библиотеку.</div>`}
 $('pickQ').oninput=drawPick;
 $('pickList').onclick=async e=>{const d=e.target.closest('[data-del]');
   if(d){e.stopPropagation();if(!confirm('Удалить картинку из библиотеки? В макетах на её месте станет пусто.'))return;
-    try{await api('/api/admin/cutouts/'+d.dataset.del,{method:'DELETE'});await loadLib();drawPick();render()}catch(er){toast(er.message)}return}
-  const o=e.target.closest('.o');if(!o||!PK)return;const id=o.dataset.id==='logo'?'logo':+o.dataset.id;setImg(id)};
+    try{const c=P.lib.find(x=>x.id===d.dataset.del);if(c)await Library.remove(c.item);await loadLib(true);drawPick();render()}catch(er){toast(er.message)}return}
+  const o=e.target.closest('.o');if(!o||!PK)return;setImg(o.dataset.id)};
 function setImg(id){if(PK.slot!=null)cur().slots[PK.slot].img=id;else cur().img[PK.key]=id;$('pickOv').classList.remove('on');dirty();render()}
 $('pickNone').onclick=()=>setImg(null);
 $('pickClose').onclick=()=>$('pickOv').classList.remove('on');
 $('pickOv').onclick=e=>{if(e.target===$('pickOv'))$('pickOv').classList.remove('on')};
-$('pickUp').onchange=async()=>{const fs=[...$('pickUp').files];$('pickUp').value='';let last=null;
-  for(const f of fs){const fd=new FormData();fd.append('file',f);try{last=await api('/api/admin/cutouts',{method:'POST',form:fd})}catch(e){toast(f.name+': '+e.message)}}
-  await loadLib();drawPick();if(last&&PK&&fs.length===1)setImg(last.id)};
+$('pickUp').onchange=async()=>{const fs=[...$('pickUp').files];$('pickUp').value='';let added=[];
+  try{added=await Library.upload(fs)}catch(e){toast(e.message)}
+  await loadLib(true);drawPick();if(added.length===1&&PK)setImg(added[0].key)};
 $('lib').onclick=()=>openPick(null);
 
 /* ---------- fill the booklet from the shop's products ---------- */
@@ -320,7 +326,7 @@ $('fill').onclick=async()=>{let ps;try{ps=(await api('/api/admin/products')).fil
   if(!confirm('Заполнить ячейки товарами магазина? Названия, цены и картинки в ячейках-товарах заменятся. Ячейки с текстом останутся.'))return;
   const order=[];ps.forEach(p=>{if(!order.includes(p.category||''))order.push(p.category||'')});
   ps.sort((a,b)=>order.indexOf(a.category||'')-order.indexOf(b.category||''));
-  const byName={};P.lib.forEach(c=>{const k=norm(c.name);if(k&&!(k in byName))byName[k]=c.id});
+  const byName=byNameMap();
   const L=cur(),cats=[[],[],[]];let pi=0;
   L.slots.forEach((s,i)=>{if(s.k!=='item')return;const p=ps[pi++];if(!p){L.slots[i]={k:'empty'};return}
     L.slots[i]={k:'item',img:byName[norm(p.title)]??null,name:p.title,price:Math.round(p.price).toLocaleString('ru-RU')+' ₽'};
@@ -331,7 +337,7 @@ $('fill').onclick=async()=>{let ps;try{ps=(await api('/api/admin/products')).fil
 
 /* ---------- start ---------- */
 function fresh(kind){const d=clone(DEF[kind]);d.qr={site:location.origin.includes('localhost')?'https://3dmew.ru':location.origin,max:P.info.max_link||''};
-  if(kind==='booklet'){const byName={};P.lib.forEach(c=>{const k=norm(c.name);if(k&&!(k in byName))byName[k]=c.id});d.slots.forEach(s=>{if(s.k==='item')s.img=byName[norm(s.name)]??null})}
+  if(kind==='booklet'){const byName=byNameMap();d.slots.forEach(s=>{if(s.k==='item')s.img=byName[norm(s.name)]??null})}
   return d}
 function upgrade(kind,v){const d=fresh(kind);if(!v||typeof v!=='object')return d;
   return {...d,...v,t:{...d.t,...(v.t||{})},img:{...d.img,...(v.img||{})},qr:{...d.qr,...(v.qr||{})},...(kind==='booklet'?{slots:Array.isArray(v.slots)&&v.slots.length===18?v.slots:d.slots}:{})}}

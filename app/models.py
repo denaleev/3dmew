@@ -350,3 +350,22 @@ class Cutout(Base):
     height: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+class LibraryFile(Base):
+    """A photo or video uploaded straight into the admin's media library.
+
+    The library (admin → «Библиотека») also lists every other picture the site keeps: builder photos and cards,
+    neural-network cut-outs, product photos and videos, colour photos and customers' pictures."""
+    __tablename__ = "library_files"
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    user_id: Mapped[Optional[str]] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), index=True)
+    kind: Mapped[str] = mapped_column(String(10))  # image | video
+    mime: Mapped[str] = mapped_column(String(100))
+    name: Mapped[str] = mapped_column(String(300), default="")
+    size: Mapped[int] = mapped_column(BigInteger, default=0)
+    data: Mapped[bytes] = mapped_column(LargeBinary)
+    thumb: Mapped[Optional[bytes]] = mapped_column(LargeBinary)  # JPEG preview for pictures
+    width: Mapped[int] = mapped_column(Integer, default=0)
+    height: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
