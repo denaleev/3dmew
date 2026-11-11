@@ -396,7 +396,7 @@ def products(q: str = "", sort: str = Query("popular", pattern="^(popular|new|ch
     # the photos and videos of each shown product, for the carousel in the tile (without the file bytes)
     media: dict[int, list] = {}
     if rows:
-        for m in db.execute(select(ProductMedia.id, ProductMedia.product_id, ProductMedia.kind, ProductMedia.mime,
+        for m in db.execute(select(ProductMedia.id, ProductMedia.product_id, ProductMedia.kind, ProductMedia.mime, ProductMedia.color_id,
                                    ProductMedia.thumb.is_not(None).label("thumb"))
                             .where(ProductMedia.product_id.in_([p.id for p in rows]))
                             .order_by(ProductMedia.sort, ProductMedia.id)):
