@@ -178,7 +178,7 @@ def product_out(p: Product, full: bool = False, sold: int | None = None) -> dict
     if sold is not None:
         o["sold"] = sold
     if full:
-        o.update(description=p.description, features=[
+        o.update(description=p.description, note=p.note or "", features=[
             {"k": a.strip(), "v": b.strip()} for a, _, b in (ln.partition(":") for ln in p.features.splitlines()) if a.strip()
         ])
     return o
@@ -324,7 +324,7 @@ def ordered_colors(p: Product, cols: list[FilamentColor], pop: dict[str, int]) -
 
 
 def media_out(pid: int, rows) -> list[dict]:
-    return [{"id": m.id, "kind": m.kind, "mime": m.mime, "url": f"/api/shop/products/{pid}/media/{m.id}",
+    return [{"id": m.id, "kind": m.kind, "mime": m.mime, "color_id": m.color_id, "url": f"/api/shop/products/{pid}/media/{m.id}",
              "thumb": f"/api/shop/products/{pid}/media/{m.id}/thumb" if m.thumb else None} for m in rows]
 
 

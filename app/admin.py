@@ -102,6 +102,8 @@ def publish_card(item_id: str, db: Session = Depends(get_db), admin: User = Depe
     p.title = (st.get("title") or it.title or "Без названия").strip()[:300]
     p.description = (st.get("desc") or "").strip()[:5000]
     p.features = (st.get("feats") or "").strip()[:5000]
+    if "shopNote" in st:  # «Примечание» from the builder's «Витрина» block
+        p.note = str(st.get("shopNote") or "").strip()[:3000]
     p.category = (st.get("shopCat") or "").strip()[:80]
     if str(st.get("shopStock") or "").strip():
         p.stock = max(0, int(num(st.get("shopStock"))))
@@ -174,6 +176,7 @@ class ProductPatch(BaseModel):
     published: Optional[bool] = None
     sort: Optional[int] = Field(default=None, ge=-100000, le=100000)
     features: Optional[str] = Field(default=None, max_length=5000)
+    note: Optional[str] = Field(default=None, max_length=3000)
     colors: Optional[list[int]] = Field(default=None, max_length=200)
     grams: Optional[float] = Field(default=None, ge=0, le=100000)
     default_color: Optional[int] = Field(default=None, ge=0)
@@ -187,7 +190,7 @@ def patch_product(pid: int, data: ProductPatch, db: Session = Depends(get_db), _
     for k, v in data.model_dump(exclude_unset=True).items():
         if k in ("price", "old_price") and v is not None:
             v = Decimal(str(round(v, 2))) if v > 0 else None
-        if k in ("title", "description", "category", "features") and v is not None:
+        if k in ("title", "description", "category", "features", "note") and v is not None:
             v = v.strip()
         if k == "colors" and v is not None:
             known = set(db.execute(select(FilamentColor.id).where(FilamentColor.id.in_(v))).scalars())

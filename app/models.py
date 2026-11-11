@@ -136,6 +136,7 @@ class Product(Base):
     thumb: Mapped[Optional[bytes]] = mapped_column(LargeBinary)  # small JPEG
     tile: Mapped[Optional[bytes]] = mapped_column(LargeBinary)  # catalogue preview without the price plate, JPEG
     default_color: Mapped[Optional[int]] = mapped_column(Integer)  # palette colour chosen in the builder
+    note: Mapped[str] = mapped_column(Text, default="", server_default="")  # «Примечание»: shown on the product page
     views: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
@@ -250,6 +251,8 @@ class ProductMedia(Base):
     data: Mapped[bytes] = mapped_column(LargeBinary)
     thumb: Mapped[Optional[bytes]] = mapped_column(LargeBinary)
     sort: Mapped[int] = mapped_column(Integer, default=0)
+    # the product printed in this plastic: the shop shows it when the buyer picks the colour
+    color_id: Mapped[Optional[int]] = mapped_column(ForeignKey("filament_colors.id", ondelete="SET NULL"), index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
