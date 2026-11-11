@@ -60,8 +60,18 @@ class CachedStatic(StaticFiles):
 
 app.mount("/ai", CachedStatic(directory=settings.STATIC_DIR / "ai"), name="ai")
 app.mount("/img", CachedStatic(directory=settings.STATIC_DIR / "img"), name="img")
-app.mount("/js", StaticFiles(directory=settings.STATIC_DIR / "js"), name="js")
-app.mount("/games", StaticFiles(directory=settings.STATIC_DIR / "games"), name="games")
+class FreshStatic(StaticFiles):
+    """Site scripts change with every release: the browser must check for a new version each time
+    (it gets «304 Not Modified» if nothing changed), otherwise it keeps running the old code for hours."""
+    async def get_response(self, path, scope):
+        resp = await super().get_response(path, scope)
+        if resp.status_code in (200, 304):
+            resp.headers["Cache-Control"] = "no-cache"
+        return resp
+
+
+app.mount("/js", FreshStatic(directory=settings.STATIC_DIR / "js"), name="js")
+app.mount("/games", FreshStatic(directory=settings.STATIC_DIR / "games"), name="games")
 
 
 @app.get("/favicon.ico", include_in_schema=False)

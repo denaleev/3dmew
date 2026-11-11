@@ -133,3 +133,9 @@ def test_categories():
     assert items[one["key"]]["cat"] == items[two["key"]]["cat"] == "Логотипы"
     assert "Фото пластика" in lib["categories"]
     assert a.patch(f"/api/admin/library/files/{fid}", json={"name": "Новое"}).json()["cat"] == "Логотипы"  # rename keeps it
+
+
+def test_scripts_are_revalidated():
+    """The library script must not stay in the browser's cache after a release."""
+    r = TestClient(app).get("/js/library.js")
+    assert r.status_code == 200 and r.headers["cache-control"] == "no-cache"
