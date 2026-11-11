@@ -298,18 +298,18 @@ window.addEventListener('beforeunload',e=>{if(Object.values(P.dirty).some(Boolea
 /* ---------- picture library ---------- */
 let PK=null;
 async function loadLib(force){try{const r=window.Library?await Library.list(force):await api('/api/admin/library');
-  P.lib=r.items.filter(x=>x.kind==='image').map(x=>({id:x.key,name:x.name,thumb:x.thumb||x.url,png:x.url,src:x.src,del:x.del,item:x}));P.srcs=r.sources||{}}catch(e){P.lib=[]}}
+  P.lib=r.items.filter(x=>x.kind==='image').map(x=>({id:x.key,name:x.name,thumb:x.thumb||x.url,png:x.url,src:x.src==='upload'?(x.cat||'Без категории'):(r.sources[x.src]||x.src),del:x.del,item:x}));
+  P.cats=[...(r.categories||[]),...Object.entries(r.sources||{}).filter(([k])=>k!=='upload').map(([,l])=>l),'Без категории'].filter((c,i,a)=>a.indexOf(c)===i)}catch(e){P.lib=[]}}
 // the booklet is filled with cut-outs (photos without background) named like the product
-function byNameMap(){const m={};P.lib.filter(c=>c.src==='cutout').forEach(c=>{const k=norm(c.name);if(k&&!(k in m))m[k]=c.id});return m}
+function byNameMap(){const m={};P.lib.filter(c=>c.item.src==='cutout').forEach(c=>{const k=norm(c.name);if(k&&!(k in m))m[k]=c.id});return m}
 function openPick(target){PK=target;$('pickTitle').textContent=target?'Выбери картинку':'Библиотека картинок';$('pickNone').classList.toggle('hide',!target);
   $('pickQ').value='';drawPick();$('pickOv').classList.add('on');setTimeout(()=>$('pickQ').focus(),50)}
 function curVal(){if(!PK)return undefined;return kid(PK.slot!=null?cur().slots[PK.slot].img:cur().img[PK.key])}
 // filter by where the picture comes from: cut-outs, cards, uploads…
 function drawPick(){const q=$('pickQ').value.trim().toLowerCase(),v=curVal(),f=P.pf||'';
-  const all=[{id:'logo',name:'Логотип магазина',thumb:'/img/logo-512.png',src:'logo'}].concat(P.lib),cnt={};all.forEach(c=>cnt[c.src]=(cnt[c.src]||0)+1);
-  const labels=Object.assign({logo:'Логотип'},P.srcs||{});
-  $('pickF').innerHTML=[['','Все',all.length]].concat(Object.keys(labels).filter(k=>cnt[k]).map(k=>[k,labels[k],cnt[k]]))
-    .map(([k,l,n])=>`<button type="button" class="${f===k?'on':''}" data-f="${k}">${esc(l)} · ${n}</button>`).join('');
+  const all=[{id:'logo',name:'Логотип магазина',thumb:'/img/logo-512.png',src:'Логотип магазина'}].concat(P.lib),cnt={};all.forEach(c=>cnt[c.src]=(cnt[c.src]||0)+1);
+  $('pickF').innerHTML=[['','Все',all.length]].concat(['Логотип магазина'].concat(P.cats||[]).filter(k=>cnt[k]).map(k=>[k,k,cnt[k]]))
+    .map(([k,l,n])=>`<button type="button" class="${f===k?'on':''}" data-f="${esc(k)}">${esc(l)} · ${n}</button>`).join('');
   const items=all.filter(c=>(!f||c.src===f)&&(!q||c.name.toLowerCase().includes(q)));
   $('pickList').innerHTML=items.length?items.map(c=>`<div class="o ${v===c.id?'on':''}" data-id="${c.id}" title="${esc(c.name)}"><img src="${esc(c.thumb)}" loading="lazy" alt="">
     <div class="nm">${esc(c.name)}</div>${c.del?`<button class="x" data-del="${c.id}" title="Удалить из библиотеки">🗑</button>`:''}</div>`).join('')

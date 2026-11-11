@@ -439,7 +439,7 @@ async function colors(){$('main').innerHTML='<div class="empty">…</div>';let c
   document.querySelectorAll('.col').forEach(el=>{const id=el.dataset.id,g=k=>el.querySelector(`[data-k="${k}"]`);
     const mt=g('mtype'),own=()=>{g('material').classList.toggle('hide',mt.value!=='__own');if(mt.value!=='__own')g('material').value=mt.value};
     if(!el.dataset.id&&!g('material').value)g('material').value=mt.value;mt.onchange=()=>{own();if(mt.value==='__own'){g('material').value='';g('material').focus()}};own();
-    g('photo').onclick=async()=>{const r=await libPickFile('Фото пластика');if(!r)return;el._photo=r.file;el.querySelector('.cph').style.backgroundImage=`url('${URL.createObjectURL(r.file)}')`};
+    g('photo').onclick=async()=>{const r=await libPickFile('Фото пластика','Фото пластика');if(!r)return;el._photo=r.file;el.querySelector('.cph').style.backgroundImage=`url('${URL.createObjectURL(r.file)}')`};
     el.querySelector('[data-save]').onclick=async()=>{const fd=new FormData();
       ['name','material','note','sort','kg_price'].forEach(k=>fd.append(k,g(k).value));fd.append('hex',g('hex').value);fd.append('hex2',g('two').checked?g('hex2').value:'');fd.append('active',g('active').checked?'1':'0');
       if(el._photo)fd.append('photo',el._photo,el._photo.name);
@@ -453,8 +453,8 @@ function library(){$('main').innerHTML=`<div class="card"><h2>📚 Библио�
   if(!window.Library){$('libRoot').innerHTML='<div class="empty">Не загрузился модуль библиотеки. Обнови страницу.</div>';return}
   Library.mount($('libRoot'),{toast})}
 /* pick one picture from the library and get it as a file for the usual upload */
-async function libPickFile(title){if(!window.Library){toast('Не загрузился модуль библиотеки');return null}
-  const sel=await Library.pick({kind:'image',title});if(!sel||!sel.length)return null;try{return{file:await Library.file(sel[0]),item:sel[0]}}catch(e){toast(e.message);return null}}
+async function libPickFile(title,cat){if(!window.Library){toast('Не загрузился модуль библиотеки');return null}
+  const sel=await Library.pick({kind:'image',title,cat});if(!sel||!sel.length)return null;try{return{file:await Library.file(sel[0]),item:sel[0]}}catch(e){toast(e.message);return null}}
 
 /* ---------- feedback messages ---------- */
 async function feedback(){$('main').innerHTML='<div class="empty">…</div>';let r;try{r=await api('/api/admin/feedback')}catch(e){return}
@@ -500,7 +500,7 @@ async function settings(){$('main').innerHTML='<div class="empty">…</div>';let
     <button class="btn" id="favFile">📚 Выбрать из библиотеки</button><button class="btn" id="favReset">↺ Логотип по умолчанию</button></div></div>
   <div class="card" style="margin-top:16px" id="maxBox"><h2>📣 Бот MAX</h2><div class="mut">Загружаю…</div></div>`;
   maxBox();
-  $('favFile').onclick=async()=>{const r=await libPickFile('Значок сайта');if(!r)return;const fd=new FormData();fd.append('file',r.file,r.file.name);
+  $('favFile').onclick=async()=>{const r=await libPickFile('Значок сайта','Логотипы');if(!r)return;const fd=new FormData();fd.append('file',r.file,r.file.name);
     try{await api('/api/admin/favicon',{method:'PUT',form:fd});setFav();toast('Значок обновлён')}catch(er){toast(er.message)}};
   $('tgTest').onclick=async()=>{$('tgRes').textContent='⏳ Отправляю…';try{await api('/api/admin/telegram/test',{method:'POST'});$('tgRes').innerHTML='<b style="color:var(--ok)">✓ Отправлено, проверь Telegram</b>'}catch(e){$('tgRes').innerHTML='<b style="color:var(--bad)">'+esc(e.message)+'</b>'}};
   $('calcDef').onclick=()=>{if(!confirm('Подставить стандартные параметры калькулятора? Твои значения заменятся в форме, а сохранятся только после «💾 Сохранить настройки».'))return;const d=s.calc_defaults;

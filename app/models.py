@@ -363,6 +363,7 @@ class LibraryFile(Base):
     kind: Mapped[str] = mapped_column(String(10))  # image | video
     mime: Mapped[str] = mapped_column(String(100))
     name: Mapped[str] = mapped_column(String(300), default="")
+    category: Mapped[str] = mapped_column(String(60), default="", server_default="")  # e.g. «Фото пластика»
     size: Mapped[int] = mapped_column(BigInteger, default=0)
     data: Mapped[bytes] = mapped_column(LargeBinary)
     thumb: Mapped[Optional[bytes]] = mapped_column(LargeBinary)  # JPEG preview for pictures
