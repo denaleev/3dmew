@@ -44,6 +44,9 @@ label.f input{width:100%;font:inherit;padding:8px 10px;border:1.5px solid var(--
 .pick .o img{width:100%;aspect-ratio:1;object-fit:contain;display:block;background:repeating-conic-gradient(#f4eee9 0 25%,#fff 0 50%) 0 0/16px 16px;border-radius:8px}
 .pick .o .nm{margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .pick .o .x{position:absolute;right:4px;top:4px;border:0;background:#fff;border-radius:8px;cursor:pointer;font-size:13px;padding:2px 5px;display:none}.pick .o:hover .x{display:block}
+.pickf{display:flex;gap:6px;flex-wrap:wrap;padding:10px 14px 0}
+.pickf button{border:1.5px solid var(--line);background:#fff;border-radius:99px;padding:4px 11px;font:inherit;font-size:13px;cursor:pointer;color:inherit}
+.pickf button.on{background:var(--acc);border-color:var(--acc);color:#fff}
 .pick .empty{grid-column:1/-1;text-align:center;color:var(--muted);padding:30px}
 
 /* ---------- printed sheets (sizes in mm, with bleed) ---------- */
@@ -181,6 +184,7 @@ body.noguides .guide,body.noguides .fold{display:none}
   <div class="top"><b id="pickTitle">Выбери картинку</b><input type="search" id="pickQ" placeholder="Поиск по названию">
     <label class="btn sm" title="Файлы попадут в общую библиотеку магазина">⬆️ Загрузить в библиотеку<input type="file" id="pickUp" accept="image/png,image/webp,image/jpeg" multiple hidden></label>
     <button class="btn sm" id="pickNone">Без картинки</button><button class="btn sm" id="pickClose">✕</button></div>
+  <div class="pickf" id="pickF"></div>
   <div class="pick" id="pickList"></div></div></div>
 <div class="toast" id="toast"></div>
 <script src="/js/library.js"></script>
@@ -294,21 +298,27 @@ window.addEventListener('beforeunload',e=>{if(Object.values(P.dirty).some(Boolea
 /* ---------- picture library ---------- */
 let PK=null;
 async function loadLib(force){try{const r=window.Library?await Library.list(force):await api('/api/admin/library');
-  P.lib=r.items.filter(x=>x.kind==='image').map(x=>({id:x.key,name:x.name,thumb:x.thumb||x.url,png:x.url,src:x.src,del:x.del,item:x}))}catch(e){P.lib=[]}}
+  P.lib=r.items.filter(x=>x.kind==='image').map(x=>({id:x.key,name:x.name,thumb:x.thumb||x.url,png:x.url,src:x.src,del:x.del,item:x}));P.srcs=r.sources||{}}catch(e){P.lib=[]}}
 // the booklet is filled with cut-outs (photos without background) named like the product
 function byNameMap(){const m={};P.lib.filter(c=>c.src==='cutout').forEach(c=>{const k=norm(c.name);if(k&&!(k in m))m[k]=c.id});return m}
 function openPick(target){PK=target;$('pickTitle').textContent=target?'Выбери картинку':'Библиотека картинок';$('pickNone').classList.toggle('hide',!target);
   $('pickQ').value='';drawPick();$('pickOv').classList.add('on');setTimeout(()=>$('pickQ').focus(),50)}
 function curVal(){if(!PK)return undefined;return kid(PK.slot!=null?cur().slots[PK.slot].img:cur().img[PK.key])}
-function drawPick(){const q=$('pickQ').value.trim().toLowerCase(),v=curVal();
-  const items=[{id:'logo',name:'Логотип магазина',thumb:'/img/logo-512.png'}].concat(P.lib).filter(c=>!q||c.name.toLowerCase().includes(q));
+// filter by where the picture comes from: cut-outs, cards, uploads…
+function drawPick(){const q=$('pickQ').value.trim().toLowerCase(),v=curVal(),f=P.pf||'';
+  const all=[{id:'logo',name:'Логотип магазина',thumb:'/img/logo-512.png',src:'logo'}].concat(P.lib),cnt={};all.forEach(c=>cnt[c.src]=(cnt[c.src]||0)+1);
+  const labels=Object.assign({logo:'Логотип'},P.srcs||{});
+  $('pickF').innerHTML=[['','Все',all.length]].concat(Object.keys(labels).filter(k=>cnt[k]).map(k=>[k,labels[k],cnt[k]]))
+    .map(([k,l,n])=>`<button type="button" class="${f===k?'on':''}" data-f="${k}">${esc(l)} · ${n}</button>`).join('');
+  const items=all.filter(c=>(!f||c.src===f)&&(!q||c.name.toLowerCase().includes(q)));
   $('pickList').innerHTML=items.length?items.map(c=>`<div class="o ${v===c.id?'on':''}" data-id="${c.id}" title="${esc(c.name)}"><img src="${esc(c.thumb)}" loading="lazy" alt="">
     <div class="nm">${esc(c.name)}</div>${c.del?`<button class="x" data-del="${c.id}" title="Удалить из библиотеки">🗑</button>`:''}</div>`).join('')
-    :`<div class="empty">Пока пусто. Сохрани карточку с вырезанным фото в конструкторе карточек или загрузи картинку в библиотеку.</div>`}
+    :`<div class="empty">${P.pf||$('pickQ').value?'Ничего не нашлось.':'Пока пусто. Сохрани карточку с вырезанным фото в конструкторе карточек или загрузи картинку в библиотеку.'}</div>`}
 $('pickQ').oninput=drawPick;
+$('pickF').onclick=e=>{const b=e.target.closest('[data-f]');if(!b)return;P.pf=b.dataset.f;drawPick()};
 $('pickList').onclick=async e=>{const d=e.target.closest('[data-del]');
-  if(d){e.stopPropagation();if(!confirm('Удалить картинку из библиотеки? В макетах на её месте станет пусто.'))return;
-    try{const c=P.lib.find(x=>x.id===d.dataset.del);if(c)await Library.remove(c.item);await loadLib(true);drawPick();render()}catch(er){toast(er.message)}return}
+  if(d){e.stopPropagation();const c=P.lib.find(x=>x.id===d.dataset.del);if(!c||!confirm(Library.warnText([c.item])+'\nВ макетах на её месте станет пусто.'))return;
+    try{await Library.remove(c.item);await loadLib(true);drawPick();render()}catch(er){toast(er.message)}return}
   const o=e.target.closest('.o');if(!o||!PK)return;setImg(o.dataset.id)};
 function setImg(id){if(PK.slot!=null)cur().slots[PK.slot].img=id;else cur().img[PK.key]=id;$('pickOv').classList.remove('on');dirty();render()}
 $('pickNone').onclick=()=>setImg(null);

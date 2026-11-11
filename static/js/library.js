@@ -57,8 +57,15 @@ async function upload(files){files=[...files];if(!files.length)return[];const ou
 async function file(it){const r=await fetch(it.url,{credentials:'same-origin'});if(!r.ok)throw new Error('Не получилось взять «'+it.name+'» из библиотеки');
   const b=await r.blob(),type=b.type||it.mime||'',ext=(type.split('/')[1]||'').replace('jpeg','jpg').replace('quicktime','mov').replace(/[^a-z0-9]/g,'');
   let name=it.name||'файл';if(ext&&!/\.[a-z0-9]{2,5}$/i.test(name))name+='.'+ext;return new File([b],name,{type})}
-async function remove(it){const [s,id]=[it.key.split('-')[0],it.key.slice(it.key.indexOf('-')+1)];
-  await req(s==='up'?'/api/admin/library/files/'+id:'/api/admin/cutouts/'+id,{method:'DELETE'});cache=null}
+/* delete from the place where the file is kept; returns {deleted:[keys], skipped:[{key,why}]} */
+async function removeMany(items){const r=await req('/api/admin/library/delete',{method:'POST',json:{keys:items.map(it=>it.key)}});cache=null;return r}
+async function remove(it){const r=await removeMany([it]);if(r.skipped.length)throw new Error(r.skipped[0].why);return r}
+// what else changes when a file goes away
+const WARN={card:'карточка пропадёт из библиотеки конструктора (копия в магазине останется)',photo:'фото пропадёт из раздела «Фото» конструктора',
+  cutout:'в визитках и буклете на месте этой картинки станет пусто',media:'фото или видео пропадёт из карусели товара',color:'у цвета пластика не будет фото',
+  customer:'файл пропадёт из заявки или отзыва покупателя'};
+function warnText(items){const n=items.length,srcs=[...new Set(items.map(it=>it.src))].filter(s=>WARN[s]);
+  return (n===1?'Удалить «'+items[0].name+'»?':'Удалить файлы: '+n+'?')+(srcs.length?'\n\nУчти: '+srcs.map(s=>WARN[s]).join('; ')+'.':'')+'\n\nОтменить удаление нельзя.'}
 
 function thumbHtml(it){if(it.thumb)return`<img src="${esc(it.thumb)}" loading="lazy" alt="">`;
   if(it.kind==='video')return`<video src="${esc(it.url)}#t=0.5" muted preload="metadata" playsinline></video>`;
@@ -86,7 +93,7 @@ function grid(root,o){const st={src:o.src||'',kind:o.kind&&o.kind!=='any'?o.kind
   q.oninput=()=>{st.q=q.value.trim().toLowerCase();draw()};up.onchange=()=>{const f=[...up.files];up.value='';add(f)};
   drop.addEventListener('dragover',e=>{e.preventDefault();drop.classList.add('over')});drop.addEventListener('dragleave',()=>drop.classList.remove('over'));
   drop.addEventListener('drop',e=>{e.preventDefault();e.stopPropagation();drop.classList.remove('over');add(e.dataTransfer.files||[])});
-  load(false);return{draw,load,get:k=>st.data&&st.data.items.find(x=>x.key===k)}}
+  load(false);return{draw,load,visible:()=>st.data?items():[],get:k=>st.data&&st.data.items.find(x=>x.key===k)}}
 
 /* the picker window */
 function pick(o){o=o||{};style();return new Promise(res=>{const sel=new Map();
@@ -103,21 +110,36 @@ function pick(o){o=o||{};style();return new Promise(res=>{const sel=new Map();
     const x=e.target.closest('[data-x]');if(x)done(o.extra[+x.dataset.x].value)})})}
 
 /* the admin tab */
-function mount(el,o){o=o||{};style();let cur=null;
-  el.innerHTML=`<div class="lib-side"><div class="lib-main"></div><div class="lib-info"><div style="color:#7f6b7a;text-align:center;padding:30px 0">Выбери файл, чтобы посмотреть, переименовать или удалить</div></div></div>`;
-  const info=el.querySelector('.lib-info');
-  const G=grid(el.querySelector('.lib-main'),{kind:'any',isOn:it=>cur&&cur.key===it.key,click:it=>{cur=it;G.draw();show(it)},added:()=>{}});
+function mount(el,o){o=o||{};style();let cur=null,multi=false;const sel=new Map();
+  const say=m=>o.toast?o.toast(m):alert(m);
+  el.innerHTML=`<div class="lib-side"><div><div class="lib-bar lib-selbar"></div><div class="lib-main"></div></div><div class="lib-info"><div style="color:#7f6b7a;text-align:center;padding:30px 0">Выбери файл, чтобы посмотреть, переименовать или удалить</div></div></div>`;
+  const info=el.querySelector('.lib-info'),bar=el.querySelector('.lib-selbar');
+  const G=grid(el.querySelector('.lib-main'),{kind:'any',isOn:it=>multi?sel.has(it.key):cur&&cur.key===it.key,
+    click:it=>{if(multi){if(!it.del)return say('«'+it.name+'» здесь удалить нельзя: '+(it.src==='card'?'это главная картинка товара, она удаляется вместе с товаром в разделе «Товары»':'он удаляется в своём разделе'));
+        sel.has(it.key)?sel.delete(it.key):sel.set(it.key,it);drawBar();return G.draw()}
+      cur=it;G.draw();show(it)},added:()=>{}});
+  function drawBar(){bar.innerHTML=multi?`<b>Выбрано: ${sel.size}</b><button type="button" class="lib-btn" data-s="all">Выбрать все показанные</button><button type="button" class="lib-btn" data-s="none">Снять выбор</button>
+      <button type="button" class="lib-btn" data-s="del" style="background:#fee2e2;color:#dc2626" ${sel.size?'':'disabled'}>🗑 Удалить выбранные</button><button type="button" class="lib-btn" data-s="off">Готово</button>`
+    :`<button type="button" class="lib-btn" data-s="on">☑️ Выбрать несколько</button><span style="color:#7f6b7a;font-size:13px">чтобы удалить сразу много файлов</span>`}
+  bar.onclick=async e=>{const b=e.target.closest('[data-s]');if(!b)return;const a=b.dataset.s;
+    if(a==='on'){multi=true;sel.clear()}else if(a==='off'){multi=false;sel.clear()}else if(a==='none')sel.clear();
+    else if(a==='all')G.visible().filter(it=>it.del).forEach(it=>sel.set(it.key,it));
+    else if(a==='del'){const items=[...sel.values()];if(!items.length||!confirm(warnText(items)))return;
+      try{const r=await removeMany(items);say('Удалено: '+r.deleted.length+(r.skipped.length?' · пропущено: '+r.skipped.length:''));sel.clear();
+        if(cur&&r.deleted.includes(cur.key)){cur=null;info.innerHTML='<div style="color:#7f6b7a;text-align:center;padding:30px 0">Удалено</div>'}await G.load(true)}catch(er){say(er.message)}}
+    drawBar();G.draw()};
+  drawBar();
   function show(it){const src=(cache&&cache.sources[it.src])||'';
     info.innerHTML=`<div class="pv">${it.kind==='video'?`<video src="${esc(it.url)}" controls playsinline preload="metadata"></video>`:`<img src="${esc(it.url)}" alt="">`}</div>
       ${it.src==='upload'?`<input id="libName" value="${esc(it.name)}" maxlength="300">`:`<b>${esc(it.name)}</b>`}
       <div style="color:#7f6b7a;font-size:13px;margin-top:6px">${esc(src)}${it.where?'<br>📍 '+esc(it.where):''}<br>${esc(size(it.size))}${it.w?' · '+it.w+'×'+it.h+' px':''}${it.t?' · '+esc(day(it.t)):''}</div>
       <div class="rw">${it.src==='upload'?'<button type="button" class="lib-btn" data-a="ren">💾 Переименовать</button>':''}<a class="lib-btn" href="${esc(it.url)}" download="${esc(it.name)}" target="_blank">⬇️ Скачать</a>${it.del?'<button type="button" class="lib-btn" data-a="del" style="background:#fee2e2;color:#dc2626">🗑 Удалить</button>':''}</div>
-      ${it.del?'':'<div style="color:#7f6b7a;font-size:12.5px;margin-top:8px">Этот файл живёт в своём разделе и удаляется там (товар, цвет, заявка, отзыв или кабинет конструктора).</div>'}`;
+      ${it.del?(WARN[it.src]?`<div style="color:#7f6b7a;font-size:12.5px;margin-top:8px">При удалении ${esc(WARN[it.src])}.</div>`:''):'<div style="color:#7f6b7a;font-size:12.5px;margin-top:8px">Это главная картинка товара в магазине: она удаляется вместе с товаром в разделе «Товары».</div>'}`;
     info.onclick=async e=>{const b=e.target.closest('[data-a]');if(!b)return;
       try{if(b.dataset.a==='ren'){const id=it.key.slice(3);await req('/api/admin/library/files/'+id,{method:'PATCH',json:{name:info.querySelector('#libName').value}});o.toast&&o.toast('Переименовано')}
-        else{if(!confirm('Удалить «'+it.name+'» из библиотеки?'+(it.src==='cutout'?' В визитках и буклете на её месте станет пусто.':'')))return;await remove(it);cur=null;info.innerHTML='<div style="color:#7f6b7a;text-align:center;padding:30px 0">Удалено</div>';o.toast&&o.toast('Удалено')}
+        else{if(!confirm(warnText([it])))return;await remove(it);cur=null;info.innerHTML='<div style="color:#7f6b7a;text-align:center;padding:30px 0">Удалено</div>';o.toast&&o.toast('Удалено')}
         await G.load(true);if(cur){cur=G.get(cur.key)||null;cur&&show(cur)}}catch(er){o.toast?o.toast(er.message):alert(er.message)}}}
   return G}
 
-window.Library={list,pick,file,upload,mount,remove};
+window.Library={list,pick,file,upload,mount,remove,removeMany,warnText};
 })();
