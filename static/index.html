@@ -100,7 +100,11 @@ details[open]{padding-bottom:6px}
 .cgrid{display:flex;flex-wrap:wrap;gap:6px}.cgrid label{display:inline-flex;align-items:center;gap:6px;border:1.5px solid var(--line);border-radius:12px;padding:4px 9px 4px 5px;font-size:13px;font-weight:600;cursor:pointer;background:#fff}
 .cgrid label:has(input:checked){border-color:#a855f7;background:#faf5ff}.cgrid i{width:18px;height:18px;border-radius:50%;background-size:cover;border:1px solid rgba(0,0,0,.1)}.cgrid input{margin:0}
 .smrow{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0}.smi{width:84px;font-size:11px;text-align:center}.smi .th{width:84px;height:84px;border-radius:10px;overflow:hidden;background:#f3ece6;display:grid;place-items:center;font-size:26px}
-.smi img{width:100%;height:100%;object-fit:cover}.smi .ac{display:flex;justify-content:center;gap:2px;margin-top:3px}.smi .ac button{border:0;background:#f3ece6;border-radius:6px;cursor:pointer;padding:2px 5px;font-size:12px}
+.smi img{width:100%;height:100%;object-fit:cover}.smi select{width:84px;font-size:11px;margin-top:3px;border:1px solid var(--line);border-radius:6px;padding:1px}
+.cph{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin:6px 0 14px}.cph>div{border:1.5px solid var(--line);border-radius:12px;padding:6px;background:#fff;font-size:12px}
+.cph .hd{display:flex;align-items:center;gap:6px;font-weight:700;margin-bottom:4px}.cph .hd i{width:16px;height:16px;border-radius:50%;flex:none;background-size:cover;border:1px solid rgba(0,0,0,.1)}
+.cph .ph{display:flex;gap:4px;flex-wrap:wrap;align-items:center}.cph .ph img{width:40px;height:40px;object-fit:cover;border-radius:7px}
+.cph .ph button{width:40px;height:40px;border:1.5px dashed #d8c4b4;border-radius:7px;background:#fffaf5;cursor:pointer;font-size:18px;color:#b4805a}.cph .no{color:#9a8a96;font-size:11px}.smi .ac{display:flex;justify-content:center;gap:2px;margin-top:3px}.smi .ac button{border:0;background:#f3ece6;border-radius:6px;cursor:pointer;padding:2px 5px;font-size:12px}
 .mini{display:none;border:1.5px solid var(--line);border-radius:14px;padding:12px;margin:-4px 0 14px}
 .mini.on{display:block}
 .ov{position:fixed;inset:0;background:rgba(45,20,50,.45);z-index:20;display:none;align-items:flex-start;justify-content:center;padding:4vh 16px;overflow:auto}
@@ -304,6 +308,11 @@ body:not(.srv) .srv-only,body:not(.adm) .adm-only{display:none!important}
       <div class="status" style="margin-bottom:8px">Ничего не отмечено — доступна вся палитра. Стандартный цвет задаётся в калькуляторе («Цвет пластика»). Применится после «💾 Сохранить изменения в магазине».</div>
       <input type="hidden" id="shopColors"><div class="cgrid" id="shopColorGrid"><span class="status">Загружаю палитру…</span></div>
       <div style="display:flex;gap:6px;margin:6px 0 14px"><button class="btn sm" type="button" id="scAll">Все</button><button class="btn sm" type="button" id="scNone">Снять все</button></div>
+      <div style="font-weight:800;font-size:13px;margin-bottom:4px">Фото изделия в разных цветах</div>
+      <div class="status" style="margin-bottom:4px">Покупатель выбирает цвет в витрине и сразу видит изделие из этого пластика. Если фото в каком-то цвете нет, в витрине будет написано: «Пока в таком цвете не печатали, но для вас можем сделать!»</div>
+      <div id="shopColorPhotos" class="status">Фото по цветам можно добавить после публикации карточки на витрине.</div>
+      <label class="f"><span>Примечание в карточке товара (видно покупателю в витрине)</span><textarea id="shopNote" rows="3" maxlength="3000" placeholder="напр. Шарнирная фигурка: лапки двигаются. Размер можно изменить по запросу."></textarea></label>
+      <div class="status" style="margin:-4px 0 12px">Применится после «💾 Сохранить изменения в магазине».</div>
       <div style="font-weight:800;font-size:13px;margin-bottom:4px">Фото и видео в карусели товара</div>
       <div id="shopMedia" class="status">Фото и видео можно добавить после публикации карточки на витрине.</div>
       <input type="file" id="smFile" multiple hidden accept="image/*,video/mp4,video/quicktime,video/webm,.mp4,.mov,.webm">
@@ -1600,7 +1609,7 @@ $('card').addEventListener('pointerup',()=>{S.dirty=true});
 setInterval(()=>{if(S.user&&S.dirty&&!saving&&(S.product||S.baseData)&&!/%|…/.test($('work').textContent)){S.dirty=false;saveCard('draft')}},8000);
 $('newCard').onclick=async()=>{if(S.user&&S.dirty&&(S.product||S.baseData))await saveCard('draft');fixedOff();
   S.cardId=null;S.draftId=null;window.filesRefresh&&setTimeout(filesRefresh);S.product=null;S.baseData=null;S.mask=null;S.photoBlob=null;S.photoSaved=false;S.dirty=false;S.needProc=false;S.chipOff={x:0,y:0};
-  drop.classList.remove('has');$('dropTitle').textContent='Загрузи фото изделия';['title','desc','price','old','calcGrams','calcH','calcM','calcFinish','calcExtra','calcMarkup','shopCat','shopColors','calcMat','calcKg','calcColor'].forEach(i=>$(i).value='');window.calcPickSync&&calcPickSync();S.stateHasColors=false;window.pubCheck&&setTimeout(pubCheck);$('calcN').value=1;window.calcUpdate&&calcUpdate();S.depth=null;S.guess=null;showGuesses([]);PT.sel=false;$('thumbInfo').textContent='';
+  drop.classList.remove('has');$('dropTitle').textContent='Загрузи фото изделия';['title','desc','price','old','calcGrams','calcH','calcM','calcFinish','calcExtra','calcMarkup','shopCat','shopColors','shopNote','calcMat','calcKg','calcColor'].forEach(i=>$(i).value='');window.calcPickSync&&calcPickSync();S.stateHasColors=false;window.pubCheck&&setTimeout(pubCheck);$('calcN').value=1;window.calcUpdate&&calcUpdate();S.depth=null;S.guess=null;showGuesses([]);PT.sel=false;$('thumbInfo').textContent='';
   ['pDx','pDy','pRot','p3Y','p3P'].forEach(i=>$(i).value=0);$('pScale').value=100;$('pFlip').checked=false;updLabels();setWork('');saveState('Новая карточка');renderCard();goTab('photo')};
 
 /* cabinet */
@@ -1625,7 +1634,7 @@ async function drawCab(){document.querySelectorAll('[data-ct]').forEach(b=>b.cla
       B('🗑',async()=>{if(confirm(cabTab==='draft'?'Удалить черновик?':'Удалить карточку из библиотеки?')){await dbDel('items',it.id);await dbDel('blobs',it.id);filesDropItem(it.id);if(S.cardId===it.id)S.cardId=null;if(S.draftId===it.id)S.draftId=null;drawCab()}})}
     el.appendChild(ac);g.appendChild(el)}}
 async function openItem(id){const rec=await dbGet('items',id),b=await dbGet('blobs',id);if(!rec)return;
-  $('cabOv').classList.remove('on');$('shopColors').value='';S.stateHasColors=!!(rec.state&&'shopColors' in rec.state);applyState(rec.state);
+  $('cabOv').classList.remove('on');$('shopColors').value='';$('shopNote').value='';S.stateHasColors=!!(rec.state&&'shopColors' in rec.state);applyState(rec.state);
   fixedOff();S.product=null;
   if(b&&b.product){const img=await blobImg(b.product),c=mkCanvas(img.width,img.height);c.getContext('2d').drawImage(img,0,0);S.product=c;S.productCut=b.productCut!==false;S.pv=null}
   // a ready card (imported, or made elsewhere): show its picture as it is, without building it again from the photo
@@ -1743,23 +1752,40 @@ if(SERVER){document.body.classList.add('srv');
     try{PAL=PAL||await api('/api/admin/colors')}catch(e){g.innerHTML='<span class="status">'+escH(e.message)+'</span>';return}
     const on=new Set(String($('shopColors').value||'').split(',').filter(Boolean).map(Number));
     g.innerHTML=PAL.length?PAL.map(c=>`<label title="${escH(c.material||'')}"><input type="checkbox" data-sc="${c.id}" ${on.has(c.id)?'checked':''}><i style="${bgOf(c)}"></i>${escH(c.name)}${c.active?'':' (скрыт)'}</label>`).join(''):'<span class="status">Палитра пуста: добавь цвета в <a href="/admin#colors" target="_blank">админке → Товары → Цвета</a>.</span>'};
-  const scSave=()=>{$('shopColors').value=[...document.querySelectorAll('[data-sc]:checked')].map(x=>x.dataset.sc).join(',');S.dirty=true};
+  const scSave=()=>{$('shopColors').value=[...document.querySelectorAll('[data-sc]:checked')].map(x=>x.dataset.sc).join(',');S.dirty=true;drawColorPhotos()};
   $('shopColorGrid').addEventListener('change',scSave);
   $('scAll').onclick=()=>{document.querySelectorAll('[data-sc]').forEach(x=>x.checked=true);scSave()};$('scNone').onclick=()=>{document.querySelectorAll('[data-sc]').forEach(x=>x.checked=false);scSave()};
   window.drawShopMedia=async()=>{const box=$('shopMedia');if(!S.pub){box.innerHTML='Фото и видео можно добавить после публикации карточки на витрине.';return}
-    const id=S.pub.id;let p;try{p=await api('/api/shop/products/'+id)}catch(e){box.textContent=e.message;return}const media=p.media||[];
+    const id=S.pub.id;let p;try{p=await api('/api/shop/products/'+id)}catch(e){box.textContent=e.message;return}const media=p.media||[];S.pubData=p;
+    try{PAL=PAL||await api('/api/admin/colors')}catch(e){}drawColorPhotos();
+    const colSel=m=>`<select data-mc="${m.id}" title="В каком цвете напечатано изделие на этом фото"><option value="">без цвета</option>${(PAL||[]).map(c=>`<option value="${c.id}" ${m.color_id===c.id?'selected':''}>${escH(c.name)}</option>`).join('')}</select>`;
     box.innerHTML=`<div class="smrow"><div class="smi"><div class="th"><img src="${escH(p.thumb)}" alt=""></div>⭐ главное (карточка)</div>
       ${media.map((m,i)=>`<div class="smi"><div class="th">${m.kind==='video'?(m.thumb?`<img src="${escH(m.thumb)}" alt="">`:'🎬'):`<img src="${escH(m.thumb||m.url)}" alt="">`}</div>
-      <div class="ac">${i?`<button type="button" data-mv="${i}" data-d="-1" title="Левее">←</button>`:''}${i<media.length-1?`<button type="button" data-mv="${i}" data-d="1" title="Правее">→</button>`:''}<button type="button" data-del="${m.id}" title="Удалить">🗑</button></div></div>`).join('')}</div>
+      <div class="ac">${i?`<button type="button" data-mv="${i}" data-d="-1" title="Левее">←</button>`:''}${i<media.length-1?`<button type="button" data-mv="${i}" data-d="1" title="Правее">→</button>`:''}<button type="button" data-del="${m.id}" title="Удалить">🗑</button></div>${m.kind==='image'?colSel(m):''}</div>`).join('')}</div>
       <button class="btn sm" type="button" id="smAdd">📚 Добавить фото или видео из библиотеки</button> <span id="smUp"></span>`;
     $('smAdd').onclick=async()=>{if(!libOn())return $('smFile').click();const fs=await libPick({kind:'any',multiple:true,title:'Фото и видео для карусели товара'});if(fs&&fs.length)smUpload(fs)};
     box.querySelector('.smrow').onclick=async e=>{const b=e.target.closest('button');if(!b)return;
       try{if(b.dataset.del){if(!confirm('Удалить этот файл из карусели товара?'))return;await api(`/api/admin/products/${id}/media/${b.dataset.del}`,{method:'DELETE'})}
         else if(b.dataset.mv){const ids=media.map(m=>m.id),i=+b.dataset.mv,j=i+ +b.dataset.d;[ids[i],ids[j]]=[ids[j],ids[i]];await api(`/api/admin/products/${id}/media`,{method:'PUT',json:{ids}})}
-        drawShopMedia()}catch(er){alert(er.message)}}};
-  const smUpload=async fs=>{if(!fs.length||!S.pub)return;const fd=new FormData();fs.forEach(f=>fd.append('files',f,f.name));
-    $('smUp').textContent='⏳ Загружаю '+fs.length+'…';try{await api('/api/admin/products/'+S.pub.id+'/media',{method:'POST',form:fd});drawShopMedia()}catch(er){$('smUp').textContent='⚠️ '+er.message}};
-  $('smFile').addEventListener('change',e=>{const fs=[...e.target.files];e.target.value='';smUpload(fs)});
+        drawShopMedia()}catch(er){alert(er.message)}};
+    box.querySelector('.smrow').onchange=async e=>{const s=e.target.closest('[data-mc]');if(!s)return;
+      try{await api(`/api/admin/products/${id}/media/${s.dataset.mc}`,{method:'PATCH',json:{color_id:s.value?+s.value:null}});drawShopMedia()}catch(er){alert(er.message)}}};
+  // «Фото изделия в разных цветах»: the colours a buyer can choose, each with its photos of the printed product
+  let smColor=null;
+  window.drawColorPhotos=()=>{const box=$('shopColorPhotos'),p=S.pubData;if(!S.pub||!p){box.className='status';box.innerHTML='Фото по цветам можно добавить после публикации карточки на витрине.';return}
+    const on=new Set(String($('shopColors').value||'').split(',').filter(Boolean).map(Number));
+    const cols=(PAL||p.color_list||[]).filter(c=>on.size?on.has(c.id):c.active!==false);
+    if(!cols.length){box.className='status';box.innerHTML='Сначала добавь цвета в <a href="/admin#colors" target="_blank">админке → Товары → Цвета</a>.';return}
+    box.className='cph';
+    box.innerHTML=cols.map(c=>{const ph=(p.media||[]).filter(m=>m.color_id===c.id),main=p.default_color===c.id;
+      return`<div><div class="hd"><i style="${bgOf(c)}"></i>${escH(c.name)}</div><div class="ph">${main?`<img src="${escH(p.thumb)}" title="Главная карточка напечатана в этом цвете" alt="">`:''}${ph.map(m=>`<img src="${escH(m.thumb||m.url)}" alt="">`).join('')}
+        <button type="button" data-cp="${c.id}" title="Добавить фото изделия в цвете «${escH(c.name)}»">＋</button></div>${ph.length||main?'':'<div class="no">ещё нет фото</div>'}</div>`}).join('')};
+  $('shopColorPhotos').onclick=async e=>{const b=e.target.closest('[data-cp]');if(!b||!S.pub)return;const cid=+b.dataset.cp,c=(PAL||[]).find(x=>x.id===cid);
+    if(!libOn()){smColor=cid;return $('smFile').click()}
+    const fs=await libPick({kind:'image',multiple:true,title:'Фото изделия в цвете «'+(c?c.name:'')+'»'});if(fs&&fs.length&&fs!=='pc')smUpload(fs,cid)};
+  const smUpload=async(fs,colorId)=>{if(!fs.length||!S.pub)return;const fd=new FormData();fs.forEach(f=>fd.append('files',f,f.name));if(colorId)fd.append('color_id',colorId);
+    const st=$('smUp');if(st)st.textContent='⏳ Загружаю '+fs.length+'…';try{await api('/api/admin/products/'+S.pub.id+'/media',{method:'POST',form:fd});drawShopMedia()}catch(er){if(st)st.textContent='⚠️ '+er.message;else alert(er.message)}};
+  $('smFile').addEventListener('change',e=>{const fs=[...e.target.files];e.target.value='';const c=smColor;smColor=null;smUpload(fs,c)});
   if(S.cardId)pubCheck()}
 
 /* ---------- print files (3MF/STL/G-code) kept with a card, only for its author ---------- */

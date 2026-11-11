@@ -109,13 +109,14 @@ def library(user: User = Depends(current_admin), db: Session = Depends(get_db)):
                          mime="image/png") | {"w": c.width, "h": c.height})
 
     # product photos and videos
-    for m in db.execute(select(ProductMedia.id, ProductMedia.product_id, ProductMedia.kind, ProductMedia.mime,
+    color_names = dict(db.execute(select(FilamentColor.id, FilamentColor.name)).all())
+    for m in db.execute(select(ProductMedia.id, ProductMedia.product_id, ProductMedia.kind, ProductMedia.mime, ProductMedia.color_id,
                                ProductMedia.name, ProductMedia.size, ProductMedia.created_at, Product.title,
                                (ProductMedia.thumb.is_not(None)).label("has_thumb"))
                         .join(Product, Product.id == ProductMedia.product_id)).all():
         url = f"/api/shop/products/{m.product_id}/media/{m.id}"
         out.append(entry(f"pm-{m.id}", "media", m.kind, m.name, url, url + "/thumb" if m.has_thumb else None, m.size,
-                         m.created_at, f"товар «{m.title}»", can_delete=True, mime=m.mime))
+                         m.created_at, f"товар «{m.title}»" + (f", цвет «{color_names[m.color_id]}»" if m.color_id in color_names else ""), can_delete=True, mime=m.mime))
 
     # photos of filament colours
     for c in db.execute(select(FilamentColor.id, FilamentColor.name, FilamentColor.updated_at,

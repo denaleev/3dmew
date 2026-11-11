@@ -188,6 +188,9 @@ body.cartopen .fab{display:none!important}
 .cphoto .csw{width:44px;height:44px;border-radius:50%;flex:none;box-shadow:inset 0 0 0 1px rgba(0,0,0,.1);background-size:cover}
 .cphoto{display:flex;gap:10px;align-items:center;background:var(--soft);border-radius:14px;padding:8px;margin:-4px 0 12px;font-size:13.5px}
 .cphoto img{width:74px;height:74px;object-fit:cover;border-radius:10px;flex:none}
+.cnone{background:#fff7ed;border:1.5px dashed #fdba74;color:#9a3412;border-radius:14px;padding:8px 12px;margin:-4px 0 12px;font-size:13.5px;font-weight:600}
+.pnote{background:var(--soft);border-left:4px solid var(--acc);border-radius:12px;padding:10px 12px;margin:0 0 12px;white-space:pre-line;font-size:14px}
+.gal .ths .cdot{position:absolute;right:3px;bottom:3px;width:14px;height:14px;border-radius:50%;border:2px solid #fff;background-size:cover;box-shadow:0 0 0 1px rgba(0,0,0,.15)}
 .gal{display:flex;flex-direction:column;gap:10px}
 .gal .main{position:relative;border-radius:16px;overflow:hidden;background:#f8efe6}
 .gal .main img,.gal .main video{width:100%;display:block;max-height:78vh;object-fit:contain;background:#f8efe6}
@@ -461,11 +464,12 @@ async function openProduct(id){const box=$('pBox');$('pOv').classList.add('on');
       <button class="btn sm" id="aDel">🗑 Удалить</button>${p.item_id?`<a class="btn sm" href="/builder#card=${esc(p.item_id)}">🎨 В конструкторе</a>`:''}
       ${p.published?'':'<span style="color:#b45309;font-weight:700">Скрыт: покупатели его не видят</span>'}</div>`:''}
     <div class="pv"><div class="gal"><div class="main" id="gMain"></div>
-      ${media.length>1?`<div class="ths">${media.map((m,i)=>`<button data-m="${i}" class="${m.kind==='video'?'vid':''}">${m.kind==='video'?(m.thumb?`<img src="${esc(m.thumb)}" alt="">`:'🎬'):`<img src="${esc(m.thumb||m.url)}" alt="">`}</button>`).join('')}</div>`:''}</div><div>
+      ${media.length>1?`<div class="ths">${media.map((m,i)=>{const mc=m.color_id&&p.color_list.find(c=>c.id===m.color_id);return`<button data-m="${i}" class="${m.kind==='video'?'vid':''}" ${mc?`title="${esc(mc.name)}"`:''}>${m.kind==='video'?(m.thumb?`<img src="${esc(m.thumb)}" alt="">`:'🎬'):`<img src="${esc(m.thumb||m.url)}" alt="">`}${mc?`<i class="cdot" style="${swBg(mc)}"></i>`:''}</button>`}).join('')}</div>`:''}</div><div>
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;${isAdm()?'':'padding-right:48px'}">${p.category?`<span class="badge">${esc(p.category)}</span>`:''}${p.reviews?`<a href="#" id="toRev" style="text-decoration:none">${stars(p.rating,p.reviews)}</a>`:''}<span style="flex:1"></span><button class="btn sm favb ${isFav(p.id)?'on':''}" id="pFav">${isFav(p.id)?'♥ В избранном':'♡ В избранное'}</button></div><h2>${esc(p.title)}</h2>
     <div><span class="price" style="font-size:26px" id="pPrice">${p.color_list.some(c=>c.delta)?'от '+rub(Math.min(p.price,...p.color_list.map(c=>c.price))):rub(p.price)}</span>${p.old_price?`<span class="old">${rub(p.old_price)}</span>`:''}</div>
     <div class="pdelta" id="pDelta"></div>${isAdm()&&p.color_list.length&&!p.priced_colors?'<div class="pdelta" style="color:#b45309">⚠️ Админу: у товара не указан вес, поэтому доплата за цвет не считается. Открой «🎨 В конструкторе», впиши «Вес из слайсера, г» и нажми «💾 Сохранить изменения в магазине».</div>':''}<div style="color:${p.stock>0?'var(--ok)':'var(--muted)'};font-weight:600;margin:6px 0 10px">${ready}</div>
     <p style="white-space:pre-line">${esc(p.description)}</p>
+    ${p.note?`<div class="pnote">📝 ${esc(p.note)}</div>`:''}
     ${p.features.length?`<table class="feats">${p.features.map(f=>`<tr><td>${esc(f.k)}</td><td>${esc(f.v)}</td></tr>`).join('')}</table>`:''}
     ${p.color_list.length?`<div style="font-weight:800;font-size:13px;color:#5e4a5c;margin-bottom:2px">Цвет *</div><div class="pick" id="pPick">${p.color_list.slice(0,CMAX).map(c=>`<button class="pk" data-c="${c.id}" ${c.mark==='default'?'title="Стандартный цвет этой модели"':c.mark==='popular'?'title="Часто выбирают"':''}><i style="${swBg(c)}"></i>${esc(c.name)}${c.mark==='default'?'<small class="std">стандарт</small>':''}${dTag(c,p)}</button>`).join('')}
       ${p.color_list.length>CMAX?`<select class="pkmore" id="pMore"><option value="">🎨 Ещё ${p.color_list.length-CMAX} ${plural(p.color_list.length-CMAX,'цвет','цвета','цветов')}…</option>${p.color_list.slice(CMAX).map(c=>`<option value="${c.id}">${esc(c.name)}${p.priced_colors||p.color_list.some(x=>x.delta)?' ('+dTxt(c)+')':''}</option>`).join('')}</select>`:''}${p.color_list.length>1?'<button class="pk multi" id="pMulti" type="button" title="Изделие в нескольких цветах: цену подтвердит мастер">🌈 Несколько цветов</button>':''}</div><div id="pCol"></div>`:''}
@@ -478,7 +482,7 @@ async function openProduct(id){const box=$('pBox');$('pOv').classList.add('on');
   if($('toRev'))$('toRev').onclick=e=>{e.preventDefault();$('revs').scrollIntoView({behavior:'smooth'})};
   loadReviews(p);
   const q=()=>Math.max(1,Math.min(999,parseInt($('pq').value)||1));$('qm').onclick=()=>$('pq').value=Math.max(1,q()-1);$('qp').onclick=()=>$('pq').value=q()+1;
-  const show=i=>{const m=media[i],mb=$('gMain');mb.innerHTML=m.kind==='video'?`<video src="${esc(m.url)}" controls playsinline preload="metadata"></video>`:`<img src="${esc(m.url)}" alt="${esc(p.title)}">`;
+  let gi=0;const show=i=>{gi=i;const m=media[i],mb=$('gMain');mb.innerHTML=m.kind==='video'?`<video src="${esc(m.url)}" controls playsinline preload="metadata"></video>`:`<img src="${esc(m.url)}" alt="${esc(p.title)}">`;
     box.querySelectorAll('[data-m]').forEach(b=>b.classList.toggle('on',+b.dataset.m===i))};
   show(0);box.querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>show(+b.dataset.m));
   let col=null,multi=null;  // multi: several colours chosen (price confirmed by the master after the slicer)
@@ -494,13 +498,19 @@ async function openProduct(id){const box=$('pBox');$('pOv').classList.add('on');
     const mark=()=>{pk.querySelectorAll('.pk').forEach(x=>x.classList.toggle('on',multi?multi.some(c=>c.id===+x.dataset.c):!!col&&col.id===+x.dataset.c));
       if($('pMore')){const inList=c=>!pk.querySelector(`.pk[data-c="${c.id}"]`);$('pMore').classList.toggle('on',multi?multi.some(inList):!!col&&inList(col))}
       $('pMulti').classList.toggle('on',!!multi);$('pMulti').textContent=multi?'✓ Несколько цветов':'🌈 Несколько цветов';
-      $('pCol').innerHTML=multi?(multi.length?`<div class="mchips">${multi.map(c=>`<span><i style="${swBg(c)}"></i>${esc(c.name)}<button data-un="${c.id}" aria-label="Убрать">✕</button></span>`).join('')}</div>`:'')
-        :col&&(col.photo||!pk.querySelector(`.pk[data-c="${col.id}"]`))?card(col):'';showPrice();setTimeout(S.updPBuy)};
+      // the product printed in the chosen plastic: its photo in the gallery, or a note that we haven't printed it yet
+      let none='';if(col&&!multi){const has=media.findIndex(m=>m.color_id===col.id);
+        if(has>=0){if(media[gi].color_id!==col.id)show(has)}else if(col.mark==='default'){if(media[gi].color_id)show(0)}
+        else{if(media[gi].color_id)show(0);none='<div class="cnone">📷 Пока в таком цвете не печатали, но для вас можем сделать!</div>'}}
+      $('pCol').innerHTML=none+(multi?(multi.length?`<div class="mchips">${multi.map(c=>`<span><i style="${swBg(c)}"></i>${esc(c.name)}<button data-un="${c.id}" aria-label="Убрать">✕</button></span>`).join('')}</div>`:'')
+        :col&&(col.photo||!pk.querySelector(`.pk[data-c="${col.id}"]`))?card(col):'');showPrice();setTimeout(S.updPBuy)};
     const choose=c=>{if(!c)return;if(multi){const i=multi.findIndex(x=>x.id===c.id);if(i>=0)multi.splice(i,1);else if(multi.length>=4){toast('Не больше 4 цветов');return}else multi.push(c)}else col=c;mark()};
     pk.onclick=e=>{const b=e.target.closest('[data-c]');if(b)choose(p.color_list.find(c=>c.id===+b.dataset.c))};
     if($('pMore'))$('pMore').onchange=e=>{choose(p.color_list.find(x=>x.id===+e.target.value));e.target.value=''};
     $('pCol').onclick=e=>{const u=e.target.closest('[data-un]');if(u&&multi){multi=multi.filter(c=>c.id!==+u.dataset.un);mark()}};
     $('pMulti').onclick=()=>{if(multi){multi=null;col=col||p.color_list[0]}else{multi=col?[col]:[];toast('Отметь ещё цвета: от 2 до 4')}mark()};
+    // a photo of the product in some colour picks that colour
+    box.querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{const i=+b.dataset.m,m=media[i];show(i);const c=m.color_id&&!multi&&p.color_list.find(x=>x.id===m.color_id);if(c){col=c;mark()}});
     col=p.color_list.find(c=>c.mark==='default')||p.color_list[0];  // as on the tile: the standard colour is chosen at once
     mark()}
   // after «В корзину» the button turns into − n + and a cart button (for the chosen colour)

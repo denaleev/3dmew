@@ -73,11 +73,13 @@ def get_media_thumb(pid: int, mid: int, db: Session = Depends(get_db), user: Use
 
 
 @admin.post("/products/{pid}/media")
-async def add_media(pid: int, files: list[UploadFile] = File(...), db: Session = Depends(get_db),
-                    _: User = Depends(current_admin)):
+async def add_media(pid: int, files: list[UploadFile] = File(...), color_id: int | None = Form(None),
+                    db: Session = Depends(get_db), _: User = Depends(current_admin)):
     p = db.get(Product, pid)
     if not p:
         raise HTTPException(404, "Товар не найден")
+    if color_id is not None and not db.get(FilamentColor, color_id):
+        color_id = None
     last = db.execute(select(func.max(ProductMedia.sort)).where(ProductMedia.product_id == pid)).scalar() or 0
     added = []
     for f in files[:20]:
@@ -100,7 +102,7 @@ async def add_media(pid: int, files: list[UploadFile] = File(...), db: Session =
         else:
             raise HTTPException(400, f"«{f.filename}»: можно фото (JPG, PNG, WEBP) или видео (MP4, MOV, WEBM)")
         last += 1
-        m.sort = last
+        m.sort, m.color_id = last, color_id
         db.add(m)
         added.append(m)
     db.commit()
@@ -123,6 +125,21 @@ def order_media(pid: int, data: MediaOrder, db: Session = Depends(get_db), _: Us
     return {"ok": True}
 
 
+class MediaColor(BaseModel):
+    color_id: int | None = None
+
+
+@admin.patch("/products/{pid}/media/{mid}")
+def media_color(pid: int, mid: int, data: MediaColor, db: Session = Depends(get_db), _: User = Depends(current_admin)):
+    """Which plastic the product is printed in on this photo (none = a general photo)."""
+    m = db.get(ProductMedia, mid)
+    if not m or m.product_id != pid:
+        raise HTTPException(404, "Не найдено")
+    m.color_id = data.color_id if data.color_id and db.get(FilamentColor, data.color_id) else None
+    db.commit()
+    return {"id": m.id, "color_id": m.color_id}
+
+
 @admin.post("/products/{pid}/media/{mid}/main")
 def media_to_main(pid: int, mid: int, db: Session = Depends(get_db), _: User = Depends(current_admin)):
     """Make a photo the main picture of the product (the one shown in the catalogue)."""
@@ -133,6 +150,7 @@ def media_to_main(pid: int, mid: int, db: Session = Depends(get_db), _: User = D
     p.image, p.thumb = m.data, jpeg(m.data, 520, 82)
     if old_image:  # the old main picture stays in the gallery
         m.data, m.thumb, m.size, m.name = old_image, old_thumb or jpeg(old_image, 400, 82), len(old_image), "карточка"
+        m.color_id = None
     else:
         db.delete(m)
     db.commit()
