@@ -75,13 +75,12 @@ def test_lists_cutouts_and_builder_cards():
     cut = a.put(f"/api/cutouts/{src}", data={"name": "Без фона"}, files={"png": ("c.png", png(), "image/png")}).json()
     assert a.put(f"/api/items/{src}", json={"kind": "card", "title": "Карточка", "thumb": "data:image/jpeg;base64,AA", "t": 1}).status_code == 200
     assert a.put(f"/api/blobs/{src}", files={"png": ("card.png", png((30, 40)), "image/png")}).status_code == 200
-    # a photo uploaded in the builder (its row is read as «t», which is also a property of SQLAlchemy rows)
+    # photos uploaded in the builder are not in the library: only their cut-outs and the cards
     ph = "p" + uuid.uuid4().hex[:10]
     assert a.put(f"/api/photos/{ph}", json={"name": "кот.jpg", "size": 123, "thumb": "data:image/jpeg;base64,AA", "t": 1762800000000}).status_code == 200
     assert a.put(f"/api/blobs/{ph}", files={"photo": ("кот.png", png(), "image/png")}).status_code == 200
     lib = keys(a)
-    assert lib[f"photo-{ph}"]["src"] == "photo" and lib[f"photo-{ph}"]["t"].startswith("2025-11-10")
-    assert a.get(lib[f"photo-{ph}"]["url"]).status_code == 200
+    assert f"photo-{ph}" not in lib and "photo" not in a.get("/api/admin/library").json()["sources"]
     assert lib[f"cut-{cut['id']}"]["src"] == "cutout"
     card = lib[f"card-{src}"]
     assert card["src"] == "card" and card["name"] == "Карточка"
@@ -105,9 +104,10 @@ def test_delete_from_any_place():
     a.put(f"/api/photos/{ph}", json={"name": "кот.jpg", "size": 1, "thumb": "data:image/jpeg;base64,AA", "t": 1})
     a.put(f"/api/blobs/{ph}", files={"photo": ("кот.png", png(), "image/png")})
     up = a.post("/api/admin/library", files={"files": ("a.png", png(), "image/png")}).json()["items"][0]
-    want = [up["key"], f"cut-{cut['id']}", f"card-{src}", f"photo-{ph}"]
+    want = [up["key"], f"cut-{cut['id']}", f"card-{src}"]
     lib = keys(a)
     assert all(lib[k]["del"] for k in want)
+    want.append(f"photo-{ph}")  # not listed, but can still be deleted
     r = a.post("/api/admin/library/delete", json={"keys": want + ["prod-1", "zzz-1"]}).json()
     assert sorted(r["deleted"]) == sorted(want)
     assert {x["key"] for x in r["skipped"]} == {"prod-1", "zzz-1"}

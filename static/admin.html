@@ -449,7 +449,7 @@ async function colors(){$('main').innerHTML='<div class="empty">…</div>';let c
     const d=el.querySelector('[data-del]');if(d)d.onclick=async()=>{if(!confirm('Удалить цвет из палитры? Он пропадёт и из товаров.'))return;await api('/api/admin/colors/'+id,{method:'DELETE'});colors()}})}
 
 /* ---------- media library ---------- */
-function library(){$('main').innerHTML=`<div class="card"><h2>📚 Библиотека</h2><div class="mut">Все фото и видео сайта в одном месте: загруженные сюда, фото и готовые карточки из конструктора, фото без фона после нейросети, фото и видео товаров, фото пластика и картинки от покупателей. Конструктор карточек, цвета, визитки и буклет, значок сайта берут картинки отсюда, а новые файлы, загруженные там, тоже попадают сюда.</div></div><div id="libRoot"></div>`;
+function library(){$('main').innerHTML=`<div class="card"><h2>📚 Библиотека</h2><div class="mut">Все фото и видео сайта в одном месте: загруженные сюда, готовые карточки из конструктора, фото изделий без фона после нейросети, фото и видео товаров, фото пластика и картинки от покупателей. Конструктор карточек, цвета, визитки и буклет, значок сайта берут картинки отсюда, а новые файлы, загруженные там, тоже попадают сюда.</div></div><div id="libRoot"></div>`;
   if(!window.Library){$('libRoot').innerHTML='<div class="empty">Не загрузился модуль библиотеки. Обнови страницу.</div>';return}
   Library.mount($('libRoot'),{toast})}
 /* pick one picture from the library and get it as a file for the usual upload */

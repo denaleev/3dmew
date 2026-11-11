@@ -473,6 +473,7 @@ body:not(.srv) .srv-only,body:not(.adm) .adm-only{display:none!important}
     <span id="saveState"></span>
     <button class="btn sm" id="newCard">＋ Новая</button>
     <button class="btn sm" id="saveLib">💾 В библиотеку</button>
+    <button class="btn sm" id="cancelEd" title="Отменить изменения: карточка останется такой, какой была сохранена">↩️ Отменить</button>
     <button class="btn sm" id="dl" title="Скачать картинку карточки">⬇️ PNG</button>
     <button class="btn pri" id="pubShop" title="Сохранить и опубликовать карточку на витрине">🛒 Опубликовать</button>
   </div>
@@ -562,7 +563,7 @@ function fixedOff(){S.fixed=null;S.fixedBlob=null;$('fixBar').classList.add('hid
 function loadFile(file,opts){opts=opts||{};fixedOff();
   const url=URL.createObjectURL(file);const img=new Image();
   img.onload=()=>{setImage(img);S.photoBlob=file;S.depth=null;if(!opts.keepIds){S.guess=null;showGuesses([])}if(opts.manual&&opts.manual.length===S.manual.length)S.manual=opts.manual;
-    if(!opts.fromLib)rememberPhoto(file,img);if(!opts.keepIds){S.cardId=null;S.draftId=null}S.dirty=true;$('thumbImg').src=url;drop.classList.add('has');$('dropTitle').textContent='Заменить фото';
+    if(!opts.fromLib)rememberPhoto(file,img);S.dirty=true;$('thumbImg').src=url;drop.classList.add('has');$('dropTitle').textContent='Заменить фото';
     $('thumbInfo').textContent=`${img.naturalWidth}×${img.naturalHeight} px`;if(opts.noProcess){S.mask=null;S.needProc=true;S.dirty=false;S.busyOpen=false;renderCard()}else{S.needProc=false;process()}};
   img.onerror=()=>alert('Не получилось открыть картинку. Попробуй JPG или PNG.');
   img.src=url;
@@ -1596,6 +1597,11 @@ async function saveCard0(kind){
     else{S.draftId=id;saveState('📝 Черновик сохранён '+new Date(rec.t).toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'}))}
   }catch(e){saveState('⚠️ Не сохранилось: '+e.message)}finally{saving=false}}
 $('saveLib').onclick=()=>saveCard('card');
+// «Отменить»: throw away the changes; the saved card (and the shop) stay as they were
+$('cancelEd').onclick=async()=>{const has=S.cardId;
+  if(!confirm(has?'Отменить изменения? Карточка вернётся к последнему сохранённому виду, в библиотеке и на витрине ничего не поменяется.':'Отменить эту карточку? Она не сохранится.'))return;
+  S.dirty=false;const d=S.draftId;S.draftId=null;if(d){try{await dbDel('items',d);await dbDel('blobs',d)}catch(e){}}
+  if(has){await openItem(has);saveState('↩️ Изменения отменены')}else{$('newCard').onclick();saveState('↩️ Отменено')}};
 // the shop admin keeps every neural-network cut-out in a separate library: the business card and booklet builder uses them
 function saveCutout(id,title,png){if(!SERVER||!S.user||!S.user.admin||!png||!S.productCut)return;
   const f=new FormData();f.append('name',title);f.append('png',png,'cutout.png');
@@ -1639,7 +1645,7 @@ async function openItem(id){const rec=await dbGet('items',id),b=await dbGet('blo
   if(b&&b.product){const img=await blobImg(b.product),c=mkCanvas(img.width,img.height);c.getContext('2d').drawImage(img,0,0);S.product=c;S.productCut=b.productCut!==false;S.pv=null}
   // a ready card (imported, or made elsewhere): show its picture as it is, without building it again from the photo
   else if(rec.kind==='card'&&b&&b.png){const img=await blobImg(b.png),c=mkCanvas(img.width,img.height);c.getContext('2d').drawImage(img,0,0);
-    S.fixed=c;S.fixedBlob=b.png;S.photoBlob=b.photo||null;S.fixedPhoto=b.photo||null;$('fixBar').classList.remove('hide')}
+    S.fixed=c;S.fixedBlob=b.png;S.photoBlob=b.photo||null;S.fixedPhoto=b.photo||null}
   S.cardId=rec.kind==='card'?id:null;S.draftId=rec.kind==='draft'?id:null;renderCard();S.busyOpen=true;goTab('text');setWork('');
   if(S.fixed){S.busyOpen=false;if(b.photo){$('thumbImg').src=URL.createObjectURL(b.photo);drop.classList.add('has');$('dropTitle').textContent='Заменить фото'}}
   else if(b&&b.photo){const manual=b.manual?new Int8Array(await b.manual.arrayBuffer()):null;S.photoSaved=true;S.busyOpen=true;loadFile(b.photo,{fromLib:true,keepIds:true,manual,noProcess:!!S.product})}
