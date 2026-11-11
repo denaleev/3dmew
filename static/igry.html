@@ -45,7 +45,20 @@ button{font:inherit;color:inherit;cursor:pointer}
 .meta .chip{font-size:13px}
 .foot{color:#fff;text-align:center;font-weight:800;font-size:14px;text-shadow:0 2px 0 var(--ink);margin-top:26px;line-height:1.6}
 .foot a{color:#fff}
-@media(max-width:1180px){.cards{grid-template-columns:repeat(4,1fr)}}@media(max-width:900px){.cards{grid-template-columns:repeat(3,1fr)}}@media(max-width:700px){.cards{grid-template-columns:repeat(2,1fr)}}
+/* турнирная таблица слева от игр: всегда на виду */
+.layout{display:grid;grid-template-columns:300px minmax(0,1fr);gap:20px;align-items:start;margin-top:24px}
+.layout .cards{margin-top:0;grid-template-columns:repeat(4,1fr)}
+.side{position:sticky;top:12px;background:#fff;border:4px solid var(--ink);border-radius:26px;box-shadow:0 6px 0 var(--ink);padding:14px;display:flex;flex-direction:column;gap:8px;max-height:calc(100vh - 24px);overflow:auto}
+.side h3{margin:0;font-size:22px;font-weight:900;display:flex;align-items:center;gap:6px}
+.side select{font:inherit;font-weight:800;font-size:15px;border:3px solid var(--ink);border-radius:14px;padding:6px 8px;background:var(--lav);width:100%}
+.side .sm{display:flex;gap:5px;flex-wrap:wrap}.side .sm .chip{font-size:13px;padding:3px 9px}
+.side .lbr{padding:4px 8px;border-width:2px;font-size:14px}.side .lbr .pl{width:26px}
+.side .who{display:flex;gap:6px;align-items:center;font-size:13px;font-weight:700;opacity:.9}
+.side .who button{margin-left:auto;border:2px solid var(--ink);border-radius:10px;background:var(--yl);font-weight:900;font-size:12px;padding:3px 8px;white-space:nowrap}
+.side .empty{font-size:14px;opacity:.75;text-align:center;padding:8px 0}
+@media(max-width:1180px){.cards{grid-template-columns:repeat(4,1fr)}.layout .cards{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:900px){.layout{grid-template-columns:1fr}.side{position:static;max-height:none}.cards,.layout .cards{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:700px){.cards,.layout .cards{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:700px){.opts{align-items:stretch;width:100%}.diff{justify-content:center}.cards{gap:12px}.card{padding:8px;border-radius:22px;gap:6px}.nm{font-size:15px;padding:3px 8px}.nm:before,.nm:after{display:none}.meta{display:none}.play{font-size:17px;padding:7px 12px}}
 /* экран игры */
 .game{position:fixed;inset:0;display:flex;flex-direction:column;z-index:5;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
@@ -95,10 +108,9 @@ button{font:inherit;color:inherit;cursor:pointer}
         <button class="sq" id="mute" title="Звук" aria-label="Звук" style="width:40px;height:40px;font-size:18px">🔊</button>
       </div>
       <div class="pill daily" id="daily"></div>
-      <button class="pill" id="lbOpen" style="background:var(--cy)">🏆 Турнирная таблица</button>
     </div>
   </div>
-  <div class="cards" id="cards"></div>
+  <div class="layout"><aside class="side" id="side" aria-label="Турнирная таблица"></aside><div class="cards" id="cards"></div></div>
   <div class="foot">Без рекламы и покупок · Рекорды сохраняются на сервере<span id="acct"></span> · В турнирной таблице видно только ник, который ты придумаешь сам · Через 20 минут игры котик предложит передышку<br><a href="/">← Вернуться в магазин 3DМяу</a></div>
 </div>
 
@@ -272,6 +284,7 @@ function showOver(o) {
     <p>${o.text || ''}</p><p id="place" class="lbnote"></p>
     <div class="row">${o.next ? '<button class="play" id="nxt">▶ Дальше</button>' : ''}<button class="play ${o.next ? 'alt' : ''}" id="again">↺ ${o.again || 'Ещё раз'}</button><button class="play alt" id="men">☰ Меню</button></div>`);
   $('again').onclick = start; $('men').onclick = showStart;
+  SIDE.game = G.id; SIDE.mode = boardMode(G.id, mode); Mya.store.set('lb.game', SIDE.game, true); Mya.store.set('lb.mode', SIDE.mode, true);
   if (better) Mya.cloud.sync(false).then(() => showPlace(G.id, mode)); else showPlace(G.id, mode);
   if (o.next) $('nxt').onclick = () => { o.next(); start(); };
 }
@@ -337,7 +350,7 @@ function openBoard(id, m) {
   if (state === 'play') pause();
   $('lb').classList.remove('hide'); drawBoard();
 }
-function closeBoard() { $('lb').classList.add('hide'); }
+function closeBoard() { const was = !$('lb').classList.contains('hide'); $('lb').classList.add('hide'); if (was && !G) drawSide(); }
 async function drawBoard() {
   const me = Mya.cloud.info, box = $('lbBox');
   box.innerHTML = `<div class="lbtop"><h2 class="title">ТУРНИР</h2><button class="sq" id="lbX" aria-label="Закрыть">✕</button></div>
@@ -364,10 +377,36 @@ async function drawBoard() {
   });
 }
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
-$('lbOpen').onclick = () => openBoard();
+// таблица слева от игр: выбранная игра запоминается, список обновляется сам
+const SIDE = {game: Mya.store.get('lb.game', 'blocks'), mode: Mya.store.get('lb.mode', '')};
+if (!Mya.games[SIDE.game]) SIDE.game = 'blocks';
+let sideTimer = 0;
+async function drawSide() {
+  const el = $('side'); if (!el) return;
+  if (Mya.cloud.off) { el.classList.add('hide'); return; }
+  const modes = boardModes(SIDE.game);
+  if (!modes.some(x => x.id === SIDE.mode)) SIDE.mode = modes[0].id;
+  const me = Mya.cloud.info;
+  el.innerHTML = `<h3>🏆 Турнир</h3>
+    <select id="sideG" aria-label="Игра">${ORDER.map(id => `<option value="${id}" ${id === SIDE.game ? 'selected' : ''}>${esc(Mya.games[id].title)}</option>`).join('')}</select>
+    ${modes.length > 1 ? `<div class="sm">${modes.map(x => `<button class="chip ${x.id === SIDE.mode ? 'on' : ''}" data-sm="${x.id}">${esc(x.name)}</button>`).join('')}</div>` : ''}
+    <div class="lbl" id="sideL"><div class="empty">Загружаю…</div></div>
+    <div class="who">${me.nick ? `Твой ник: <b>${esc(me.nick)}</b>` : 'Без ника тебя не видно в таблице'}<button id="sideNick">${me.nick ? '✏️ Ник' : '＋ Ник'}</button></div>`;
+  $('sideG').onchange = () => { SIDE.game = $('sideG').value; SIDE.mode = ''; Mya.store.set('lb.game', SIDE.game, true); drawSide(); };
+  el.querySelectorAll('[data-sm]').forEach(b => b.onclick = () => { SIDE.mode = b.dataset.sm; Mya.store.set('lb.mode', SIDE.mode, true); drawSide(); });
+  $('sideNick').onclick = () => openBoard(SIDE.game, SIDE.mode);
+  let t; try { t = await Mya.cloud.top(SIDE.game, SIDE.mode, matchMedia('(max-width:900px)').matches ? 5 : 10); } catch (e) { $('sideL').innerHTML = '<div class="empty">Таблица сейчас недоступна</div>'; return; }
+  if (!$('sideL') || t.game !== SIDE.game || t.mode !== SIDE.mode) return;
+  const medal = n => ['🥇', '🥈', '🥉'][n - 1] || n;
+  $('sideL').innerHTML = (t.items.length ? t.items.map(r => `<div class="lbr ${r.me ? 'me' : ''}"><span class="pl">${medal(r.place)}</span><span class="nk">${esc(r.nick)}</span><span class="sc">${esc(fmtScore(t.game, t.mode, r.score))}</span></div>`).join('')
+    : '<div class="empty">Пока никого нет. Стань первым!</div>')
+    + (t.me && !t.items.some(r => r.me) ? `<div class="lbr me"><span class="pl">${t.me.place}</span><span class="nk">${t.me.listed ? esc(me.nick) : 'Ты'}</span><span class="sc">${esc(fmtScore(t.game, t.mode, t.me.score))}</span></div>` : '');
+}
+function sideLoop() { clearInterval(sideTimer); sideTimer = setInterval(() => { if (!G && !document.hidden) drawSide(); }, 60000); }
+sideLoop();
 $('lb').onclick = e => { if (e.target === $('lb')) closeBoard(); };
 function showAcct(i) { $('acct').innerHTML = i.signed_in ? ` для «${esc(i.name)}» на всех устройствах` : ` (для всех устройств <a href="/#account">войди в аккаунт</a>)`; }
-Mya.cloud.on(i => { showAcct(i); if (!G) renderHub(); });
+Mya.cloud.on(i => { showAcct(i); if (!G) { renderHub(); drawSide(); } });
 Mya.cloud.sync(true);
 window.addEventListener('pagehide', () => Mya.cloud.flush());
 document.addEventListener('visibilitychange', () => { if (document.hidden) Mya.cloud.flush(); });
@@ -377,7 +416,7 @@ function route() {
   const id = location.hash.slice(1);
   closeBoard();
   if (inst) closeGame();
-  if (Mya.games[id]) openGame(id); else renderHub();
+  if (Mya.games[id]) openGame(id); else { renderHub(); drawSide(); }
 }
 window.addEventListener('hashchange', route);
 route();
