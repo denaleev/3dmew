@@ -451,7 +451,7 @@ function drawGrid(g,list){
       if(e.target.closest('[data-inc]'))stepLine(l,1);else if(e.target.closest('[data-dec]'))stepLine(l,-1);else if(e.target.closest('[data-tocart]'))openCart();return}
     const c=e.target.closest('.pc');if(c)location.hash='#product/'+c.dataset.id}}
 
-const CMAX=4;  // the standard colour + 3 popular ones as buttons; the rest go to the drop-down list
+const CMAX=4;  // the standard colour + 3 popular ones are shown at once; «Ещё N цветов» opens the rest, also as swatches
 const dTxt=c=>c.delta>0?'+'+rub(c.delta):c.delta<0?'−'+rub(-c.delta):'±0 ₽';
 const dTag=(c,p)=>p.priced_colors||p.color_list.some(x=>x.delta)?`<small class="${c.delta>0?'up':c.delta<0?'dn':''}">${dTxt(c)}</small>`:'';
 const plural=(n,a,b,c)=>{n=Math.abs(n)%100;const k=n%10;return n>10&&n<20?c:k===1?a:k>1&&k<5?b:c};
@@ -471,8 +471,8 @@ async function openProduct(id){const box=$('pBox');$('pOv').classList.add('on');
     <p style="white-space:pre-line">${esc(p.description)}</p>
     ${p.note?`<div class="pnote">📝 ${esc(p.note)}</div>`:''}
     ${p.features.length?`<table class="feats">${p.features.map(f=>`<tr><td>${esc(f.k)}</td><td>${esc(f.v)}</td></tr>`).join('')}</table>`:''}
-    ${p.color_list.length?`<div style="font-weight:800;font-size:13px;color:#5e4a5c;margin-bottom:2px">Цвет *</div><div class="pick" id="pPick">${p.color_list.slice(0,CMAX).map(c=>`<button class="pk" data-c="${c.id}" ${c.mark==='default'?'title="Стандартный цвет этой модели"':c.mark==='popular'?'title="Часто выбирают"':''}><i style="${swBg(c)}"></i>${esc(c.name)}${c.mark==='default'?'<small class="std">стандарт</small>':''}${dTag(c,p)}</button>`).join('')}
-      ${p.color_list.length>CMAX?`<select class="pkmore" id="pMore"><option value="">🎨 Ещё ${p.color_list.length-CMAX} ${plural(p.color_list.length-CMAX,'цвет','цвета','цветов')}…</option>${p.color_list.slice(CMAX).map(c=>`<option value="${c.id}">${esc(c.name)}${p.priced_colors||p.color_list.some(x=>x.delta)?' ('+dTxt(c)+')':''}</option>`).join('')}</select>`:''}${p.color_list.length>1?'<button class="pk multi" id="pMulti" type="button" title="Изделие в нескольких цветах: цену подтвердит мастер">🌈 Несколько цветов</button>':''}</div><div id="pCol"></div>`:''}
+    ${p.color_list.length?`<div style="font-weight:800;font-size:13px;color:#5e4a5c;margin-bottom:2px">Цвет *</div><div class="pick" id="pPick">${p.color_list.map((c,i)=>`<button class="pk ${i>=CMAX?'xtra hide':''}" data-c="${c.id}" ${c.mark==='default'?'title="Стандартный цвет этой модели"':c.mark==='popular'?'title="Часто выбирают"':''}><i style="${swBg(c)}"></i>${esc(c.name)}${c.mark==='default'?'<small class="std">стандарт</small>':''}${dTag(c,p)}</button>`).join('')}
+      ${p.color_list.length>CMAX?`<button class="pk multi" id="pMore" type="button">🎨 Ещё ${p.color_list.length-CMAX} ${plural(p.color_list.length-CMAX,'цвет','цвета','цветов')} ▾</button>`:''}${p.color_list.length>1?'<button class="pk multi" id="pMulti" type="button" title="Изделие в нескольких цветах: цену подтвердит мастер">🌈 Несколько цветов</button>':''}</div><div id="pCol"></div>`:''}
     <label class="f"><span>Пожелания${p.color_list.length?'':': цвет, надпись'} (необязательно)</span><input id="pNote" maxlength="300" placeholder="${p.color_list.length?'например: подарочная упаковка':'например: синий'}"></label>
     <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap" id="pBuy"><div class="qty"><button id="qm">−</button><input id="pq" value="1" inputmode="numeric"><button id="qp">+</button></div>
     <button class="btn pri big" style="flex:1" id="pAdd"><svg class="ci" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2.2l2.1 10.2a1.6 1.6 0 0 0 1.6 1.3h8.3a1.6 1.6 0 0 0 1.5-1.2L20.5 8H6.3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9.5" cy="19.5" r="1.6" fill="currentColor"/><circle cx="17" cy="19.5" r="1.6" fill="currentColor"/></svg> В корзину</button></div><div id="pIn" class="hide"></div>
@@ -495,24 +495,27 @@ async function openProduct(id){const box=$('pBox');$('pOv').classList.add('on');
     d.innerHTML=`Базовая цена ${rub(base)} · ${esc(col.name)}: <b class="${col.delta>0?'up':col.delta<0?'dn':''}">${col.delta?dTxt(col)+(col.delta>0?' (пластик дороже)':' (пластик дешевле)'):'без доплаты'}</b>`};
   if($('pPick')){const pk=$('pPick');
     const card=c=>`<div class="cphoto">${c.photo?`<img src="${esc(c.photo)}" alt="">`:`<i class="csw" style="${swBg(c)}"></i>`}<div><b>${esc(c.name)}</b>${c.material?' · '+esc(c.material):''}${c.note?'<br>'+esc(c.note):''}${c.photo?'<br><small style="color:var(--muted)">Фото пластика этого цвета</small>':''}</div></div>`;
-    const mark=()=>{pk.querySelectorAll('.pk').forEach(x=>x.classList.toggle('on',multi?multi.some(c=>c.id===+x.dataset.c):!!col&&col.id===+x.dataset.c));
-      if($('pMore')){const inList=c=>!pk.querySelector(`.pk[data-c="${c.id}"]`);$('pMore').classList.toggle('on',multi?multi.some(inList):!!col&&inList(col))}
+    const mark=first=>{pk.querySelectorAll('.pk').forEach(x=>x.classList.toggle('on',multi?multi.some(c=>c.id===+x.dataset.c):!!col&&col.id===+x.dataset.c));
+      // a chosen colour among the hidden ones opens the whole list
+      if($('pMore')&&(multi||[col]).some(c=>c&&pk.querySelector(`.pk.xtra.hide[data-c="${c.id}"]`)))showAll(true);
       $('pMulti').classList.toggle('on',!!multi);$('pMulti').textContent=multi?'✓ Несколько цветов':'🌈 Несколько цветов';
       // the product printed in the chosen plastic: its photo in the gallery, or a note that we haven't printed it yet
       let none='';if(col&&!multi){const has=media.findIndex(m=>m.color_id===col.id);
-        if(has>=0){if(media[gi].color_id!==col.id)show(has)}else if(col.mark==='default'){if(media[gi].color_id)show(0)}
+        // the product page opens on the card itself; the gallery follows the colour the buyer picks
+        if(has>=0){if(!first&&media[gi].color_id!==col.id)show(has)}else if(col.mark==='default'){if(media[gi].color_id)show(0)}
         else{if(media[gi].color_id)show(0);none='<div class="cnone">📷 Пока в таком цвете не печатали, но для вас можем сделать!</div>'}}
       $('pCol').innerHTML=none+(multi?(multi.length?`<div class="mchips">${multi.map(c=>`<span><i style="${swBg(c)}"></i>${esc(c.name)}<button data-un="${c.id}" aria-label="Убрать">✕</button></span>`).join('')}</div>`:'')
-        :col&&(col.photo||!pk.querySelector(`.pk[data-c="${col.id}"]`))?card(col):'');showPrice();setTimeout(S.updPBuy)};
+        :col&&col.photo?card(col):'');showPrice();setTimeout(S.updPBuy)};
     const choose=c=>{if(!c)return;if(multi){const i=multi.findIndex(x=>x.id===c.id);if(i>=0)multi.splice(i,1);else if(multi.length>=4){toast('Не больше 4 цветов');return}else multi.push(c)}else col=c;mark()};
     pk.onclick=e=>{const b=e.target.closest('[data-c]');if(b)choose(p.color_list.find(c=>c.id===+b.dataset.c))};
-    if($('pMore'))$('pMore').onchange=e=>{choose(p.color_list.find(x=>x.id===+e.target.value));e.target.value=''};
+    const showAll=on=>{pk.querySelectorAll('.pk.xtra').forEach(x=>x.classList.toggle('hide',!on));const m=$('pMore');if(m){m.dataset.open=on?1:'';m.textContent=on?'Свернуть ▴':`🎨 Ещё ${p.color_list.length-CMAX} ${plural(p.color_list.length-CMAX,'цвет','цвета','цветов')} ▾`}};
+    if($('pMore'))$('pMore').onclick=e=>{e.stopPropagation();showAll(!$('pMore').dataset.open)};
     $('pCol').onclick=e=>{const u=e.target.closest('[data-un]');if(u&&multi){multi=multi.filter(c=>c.id!==+u.dataset.un);mark()}};
     $('pMulti').onclick=()=>{if(multi){multi=null;col=col||p.color_list[0]}else{multi=col?[col]:[];toast('Отметь ещё цвета: от 2 до 4')}mark()};
     // a photo of the product in some colour picks that colour
     box.querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{const i=+b.dataset.m,m=media[i];show(i);const c=m.color_id&&!multi&&p.color_list.find(x=>x.id===m.color_id);if(c){col=c;mark()}});
     col=p.color_list.find(c=>c.mark==='default')||p.color_list[0];  // as on the tile: the standard colour is chosen at once
-    mark()}
+    mark(true)}
   // after «В корзину» the button turns into − n + and a cart button (for the chosen colour)
   const sel=()=>multi?{id:0,ids:multi.map(c=>c.id),name:multi.map(c=>c.name).join(' + '),price:Math.max(...multi.map(cp)),pending:true}:col;
   const curLine=()=>{const c=multi&&multi.length<2?null:sel();if(multi&&!c)return null;return lineOf(p.id,c,$('pNote').value.trim())};
