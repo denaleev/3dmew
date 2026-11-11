@@ -115,3 +115,21 @@ def test_delete_from_any_place():
     assert not any(k in lib for k in want)
     assert a.get(f"/api/items/{src}").status_code == 404
     assert user_client(admin=False).post("/api/admin/library/delete", json={"keys": ["up-1"]}).status_code == 403
+
+
+def test_categories():
+    a = user_client(admin=True)
+    one = a.post("/api/admin/library", data={"category": "Фото пластика"},
+                 files={"files": ("катушка.png", png(), "image/png")}).json()["items"][0]
+    assert one["cat"] == "Фото пластика"
+    two = a.post("/api/admin/library", files={"files": ("x.png", png(), "image/png")}).json()["items"][0]
+    assert two["cat"] == ""
+    fid = two["key"].split("-")[1]
+    assert a.patch(f"/api/admin/library/files/{fid}", json={"category": "Мои фоны"}).json()["cat"] == "Мои фоны"
+    r = a.post("/api/admin/library/category", json={"keys": [one["key"], two["key"], "pm-1"], "category": "Логотипы"}).json()
+    assert (r["updated"], r["skipped"]) == (2, 1)
+    lib = a.get("/api/admin/library").json()
+    items = {e["key"]: e for e in lib["items"]}
+    assert items[one["key"]]["cat"] == items[two["key"]]["cat"] == "Логотипы"
+    assert "Фото пластика" in lib["categories"]
+    assert a.patch(f"/api/admin/library/files/{fid}", json={"name": "Новое"}).json()["cat"] == "Логотипы"  # rename keeps it

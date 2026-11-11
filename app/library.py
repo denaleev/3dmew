@@ -8,7 +8,7 @@ import io
 from datetime import datetime, timezone
 from typing import Optional
 
-from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import Response
 from PIL import Image, ImageOps, UnidentifiedImageError
 from pydantic import BaseModel, Field
@@ -36,6 +36,14 @@ SOURCES = {
     "customer": "От покупателей",
 }
 MAX_FILES = 30
+# categories offered for uploaded files; the admin can type his own. A category is a filter in the library,
+# so «Фото пластика» shows uploaded spool photos next to the photos of colours.
+CATEGORIES = ["Фото пластика", "Фото изделий", "Логотипы", "Фоны и текстуры", "Видео", "Прочее"]
+
+
+def clean_cat(s: Optional[str]) -> str:
+    s = clean(s, 60) if s else ""
+    return "" if s.lower() == SOURCES["upload"].lower() else s
 
 
 def iso(dt) -> Optional[str]:
@@ -52,7 +60,7 @@ def entry(key: str, src: str, kind: str, name: str, url: str, thumb: Optional[st
 def upload_out(f: LibraryFile) -> dict:
     url = f"/api/admin/library/files/{f.id}"
     return entry(f"up-{f.id}", "upload", f.kind, f.name, url, url + "/thumb" if f.thumb else None, f.size, f.created_at,
-                 can_delete=True, mime=f.mime) | {"w": f.width, "h": f.height}
+                 can_delete=True, mime=f.mime) | {"w": f.width, "h": f.height, "cat": f.category or ""}
 
 
 @router.get("")
@@ -60,11 +68,11 @@ def library(user: User = Depends(current_admin), db: Session = Depends(get_db)):
     out: list[dict] = []
     # uploaded straight into the library
     for f in db.execute(select(LibraryFile.id, LibraryFile.kind, LibraryFile.mime, LibraryFile.name, LibraryFile.size,
-                               LibraryFile.created_at, LibraryFile.width, LibraryFile.height,
+                               LibraryFile.created_at, LibraryFile.width, LibraryFile.height, LibraryFile.category,
                                (LibraryFile.thumb.is_not(None)).label("has_thumb"))).all():
         url = f"/api/admin/library/files/{f.id}"
         out.append(entry(f"up-{f.id}", "upload", f.kind, f.name, url, url + "/thumb" if f.has_thumb else None, f.size,
-                         f.created_at, can_delete=True, mime=f.mime) | {"w": f.width, "h": f.height})
+                         f.created_at, can_delete=True, mime=f.mime) | {"w": f.width, "h": f.height, "cat": f.category or ""})
 
     # photos uploaded in the card builder (the photo itself is in blobs with the same id)
     rows = db.execute(select(Photo.id, Photo.name, Photo.size, Photo.thumb, Photo.t.label("ms"), BlobSet.photo_type)
@@ -133,7 +141,8 @@ def library(user: User = Depends(current_admin), db: Session = Depends(get_db)):
                          f"отзыв №{x.review_id}", can_delete=True))
 
     out.sort(key=lambda e: datetime.fromisoformat(e["t"]).timestamp() if e["t"] else 0, reverse=True)
-    return {"sources": SOURCES, "items": out}
+    used = sorted({e["cat"] for e in out if e.get("cat")}, key=str.lower)
+    return {"sources": SOURCES, "categories": list(dict.fromkeys(CATEGORIES + used)), "items": out}
 
 
 def _ms(t):
@@ -151,8 +160,9 @@ def picture(data: bytes) -> tuple[bytes, int, int]:
 
 
 @router.post("")
-async def upload(request: Request, files: list[UploadFile] = File(...), user: User = Depends(current_admin),
-                 db: Session = Depends(get_db)):
+async def upload(request: Request, files: list[UploadFile] = File(...), category: str = Form(""),
+                 user: User = Depends(current_admin), db: Session = Depends(get_db)):
+    category = clean_cat(category)
     if len(files) > MAX_FILES:
         raise HTTPException(400, f"За раз можно до {MAX_FILES} файлов")
     added = []
@@ -164,7 +174,7 @@ async def upload(request: Request, files: list[UploadFile] = File(...), user: Us
         if e in VIDEO_MIME or ct.startswith("video/"):
             if len(data) > settings.MAX_VIDEO_MB * 1024 * 1024:
                 raise HTTPException(413, f"Видео «{name}» больше {settings.MAX_VIDEO_MB} МБ")
-            f = LibraryFile(user_id=user.id, kind="video", mime=VIDEO_MIME.get(e, ct or "video/mp4"), name=name,
+            f = LibraryFile(user_id=user.id, kind="video", category=category, mime=VIDEO_MIME.get(e, ct or "video/mp4"), name=name,
                             size=len(data), data=data)
         elif e in IMAGE_EXT or ct.startswith("image/"):
             if len(data) > settings.MAX_UPLOAD_MB * 1024 * 1024:
@@ -175,7 +185,7 @@ async def upload(request: Request, files: list[UploadFile] = File(...), user: Us
             except (UnidentifiedImageError, OSError):
                 raise HTTPException(400, f"Не получилось открыть «{name}» как картинку")
             mime = Image.MIME.get(fmt, ct if ct.startswith("image/") else "image/jpeg")
-            f = LibraryFile(user_id=user.id, kind="image", mime=mime, name=name, size=len(data), data=data, thumb=thumb,
+            f = LibraryFile(user_id=user.id, kind="image", category=category, mime=mime, name=name, size=len(data), data=data, thumb=thumb,
                             width=w, height=h)
         else:
             raise HTTPException(400, f"«{name}»: в библиотеку можно фото (JPG, PNG, WEBP) или видео (MP4, MOV, WEBM)")
@@ -207,13 +217,17 @@ def file_thumb(fid: int, db: Session = Depends(get_db), _: User = Depends(curren
 
 
 class RenameIn(BaseModel):
-    name: str = Field(min_length=1, max_length=300)
+    name: Optional[str] = Field(None, max_length=300)
+    category: Optional[str] = Field(None, max_length=60)
 
 
 @router.patch("/files/{fid}")
 def rename(fid: int, data: RenameIn, db: Session = Depends(get_db), _: User = Depends(current_admin)):
     f = get_file(db, fid)
-    f.name = clean(data.name, 300) or f.name
+    if data.name is not None:
+        f.name = clean(data.name, 300) or f.name
+    if data.category is not None:
+        f.category = clean_cat(data.category)
     db.commit()
     return upload_out(f)
 
@@ -269,3 +283,19 @@ def delete_many(body: DeleteIn, user: User = Depends(current_admin), db: Session
         (skipped.append({"key": key, "why": why}) if why else deleted.append(key))
     db.commit()
     return {"deleted": deleted, "skipped": skipped}
+
+
+class CategoryIn(BaseModel):
+    keys: list[str] = Field(min_length=1, max_length=500)
+    category: str = Field("", max_length=60)
+
+
+@router.post("/category")
+def set_category(body: CategoryIn, db: Session = Depends(get_db), _: User = Depends(current_admin)):
+    """Put several uploaded files into a category. Other files stay where they are kept (colours, products…)."""
+    ids = [int(k[3:]) for k in body.keys if k.startswith("up-") and k[3:].isdigit()]
+    cat = clean_cat(body.category)
+    if ids:
+        db.execute(update(LibraryFile).where(LibraryFile.id.in_(ids)).values(category=cat))
+        db.commit()
+    return {"updated": len(ids), "skipped": len(body.keys) - len(ids), "category": cat}

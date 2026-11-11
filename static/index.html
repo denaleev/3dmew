@@ -963,7 +963,7 @@ $('resetEnh').onclick=()=>{for(const k in enhDefaults){const e=$(k);if(e.type===
 
 /* ---------- logo ---------- */
 $('logoPick').onclick=$('logoBox').onclick=async()=>{if(!libOn())return $('logoFile').click();
-  const fs=await libPick({kind:'image',title:'Логотип'});if(!fs||!fs[0])return;const r=new FileReader();r.onload=()=>{S.logoSrc=r.result;buildLogo(true)};r.readAsDataURL(fs[0])};
+  const fs=await libPick({kind:'image',title:'Логотип',cat:'Логотипы'});if(!fs||!fs[0])return;const r=new FileReader();r.onload=()=>{S.logoSrc=r.result;buildLogo(true)};r.readAsDataURL(fs[0])};
 $('logoFile').onchange=e=>{const f=e.target.files[0];e.target.value='';if(!f)return;const r=new FileReader();r.onload=()=>{S.logoSrc=r.result;buildLogo(true)};r.readAsDataURL(f)};
 $('logoDel').onclick=()=>{S.logoSrc=null;S.logo=null;showLogo();renderCard();save()};
 $('logoWhite').addEventListener('input',()=>buildLogo(true));
