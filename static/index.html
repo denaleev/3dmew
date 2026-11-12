@@ -315,7 +315,7 @@ body:not(.srv) .srv-only,body:not(.adm) .adm-only{display:none!important}
         <label class="chk"><input type="checkbox" data-cpcut> ✂️ Убирать фон и ставить фон карточки</label>
         <div class="status" style="margin:2px 0 6px">Нейросеть вырезает изделие, ставит его на фон этой карточки и сохраняет вырезанное фото в библиотеку («Фото изделия без фона»).</div>
         <button class="btn sm" type="button" id="cpFixOne">✨ Убрать фон у загруженных фото этого товара</button>
-        <button class="btn sm" type="button" id="cpFixAll">✨ …во всех товарах</button> <span class="status" id="cpSt"></span>
+ <span class="status" id="cpSt"></span>
       </div>
       <label class="f"><span>Примечание в карточке товара (видно покупателю в витрине)</span><textarea id="shopNote" rows="3" maxlength="3000" placeholder="напр. Шарнирная фигурка: лапки двигаются. Размер можно изменить по запросу."></textarea></label>
       <div class="status" style="margin:-4px 0 12px">Применится после «💾 Сохранить изменения в магазине».</div>
@@ -1840,12 +1840,6 @@ if(SERVER){document.body.classList.add('srv');
     return todo.length}
   $('cpFixOne').onclick=async()=>{if(!S.pub)return;const b=$('cpFixOne');b.disabled=true;
     try{const n=await fixProduct(S.pub.id,null,'этот товар');$('cpSt').textContent=n?'✓ Готово: '+n+' фото':'Все фото по цветам уже без фона';drawShopMedia()}catch(e){$('cpSt').textContent='⚠️ '+e.message}finally{b.disabled=false}};
-  $('cpFixAll').onclick=async()=>{if(!confirm('Убрать фон у фото по цветам во всех товарах и поставить фон их карточек? Это может занять несколько минут, не закрывай страницу.'))return;
-    const b=$('cpFixAll');b.disabled=true;let total=0;
-    try{const list=await api('/api/admin/products');
-      for(const p of list){let st=null;if(p.item_id){try{const rec=await dbGet('items',p.item_id);st=rec&&rec.state}catch(e){}}
-        total+=await fixProduct(p.id,st,'«'+p.title+'»')}
-      $('cpSt').textContent=total?'✓ Готово: '+total+' фото':'Все фото по цветам уже без фона';if(S.pub)drawShopMedia()}catch(e){$('cpSt').textContent='⚠️ '+e.message}finally{b.disabled=false}};
   const smUpload=async(fs,colorId)=>{if(!fs.length||!S.pub)return;if(colorId&&cpCut.checked)fs=await prepColor(fs,colorId,null);const fd=new FormData();fs.forEach(f=>fd.append('files',f,f.name));if(colorId)fd.append('color_id',colorId);
     const st=$('smUp');if(st)st.textContent='⏳ Загружаю '+fs.length+'…';try{await api('/api/admin/products/'+S.pub.id+'/media',{method:'POST',form:fd});drawShopMedia()}catch(er){if(st)st.textContent='⚠️ '+er.message;else alert(er.message)}};
   $('smFile').addEventListener('change',e=>{const fs=[...e.target.files];e.target.value='';const c=smColor;smColor=null;smUpload(fs,c)});
