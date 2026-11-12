@@ -324,7 +324,7 @@ def ordered_colors(p: Product, cols: list[FilamentColor], pop: dict[str, int]) -
 
 
 def media_out(pid: int, rows) -> list[dict]:
-    return [{"id": m.id, "kind": m.kind, "mime": m.mime, "color_id": m.color_id, "url": f"/api/shop/products/{pid}/media/{m.id}",
+    return [{"id": m.id, "kind": m.kind, "mime": m.mime, "color_id": m.color_id, "name": m.name, "url": f"/api/shop/products/{pid}/media/{m.id}",
              "thumb": f"/api/shop/products/{pid}/media/{m.id}/thumb" if m.thumb else None} for m in rows]
 
 
