@@ -311,6 +311,12 @@ body:not(.srv) .srv-only,body:not(.adm) .adm-only{display:none!important}
       <div style="font-weight:800;font-size:13px;margin-bottom:4px">Фото изделия в разных цветах</div>
       <div class="status" style="margin-bottom:4px">Покупатель выбирает цвет в витрине и сразу видит изделие из этого пластика. Если фото в каком-то цвете нет, в витрине будет написано: «Пока в таком цвете не печатали, но для вас можем сделать!»</div>
       <div id="shopColorPhotos" class="status">Фото по цветам можно добавить после публикации карточки на витрине.</div>
+      <div id="cpTools" class="hide" style="margin:-6px 0 12px">
+        <label class="chk"><input type="checkbox" data-cpcut> ✂️ Убирать фон и ставить фон карточки</label>
+        <div class="status" style="margin:2px 0 6px">Нейросеть вырезает изделие, ставит его на фон этой карточки и сохраняет вырезанное фото в библиотеку («Фото изделия без фона»).</div>
+        <button class="btn sm" type="button" id="cpFixOne">✨ Убрать фон у загруженных фото этого товара</button>
+        <button class="btn sm" type="button" id="cpFixAll">✨ …во всех товарах</button> <span class="status" id="cpSt"></span>
+      </div>
       <label class="f"><span>Примечание в карточке товара (видно покупателю в витрине)</span><textarea id="shopNote" rows="3" maxlength="3000" placeholder="напр. Шарнирная фигурка: лапки двигаются. Размер можно изменить по запросу."></textarea></label>
       <div class="status" style="margin:-4px 0 12px">Применится после «💾 Сохранить изменения в магазине».</div>
       <div style="font-weight:800;font-size:13px;margin-bottom:4px">Фото и видео в карусели товара</div>
@@ -777,8 +783,10 @@ function aiInit(){
 window.addEventListener('load',()=>setTimeout(aiInit,50));
 
 // U²-Net: salient object probability, averaged with a mirrored pass for stability
-async function aiMask(){
-  const {bw,bh}=S,N=320,c=mkCanvas(N,N),x=c.getContext('2d');x.imageSmoothingQuality='high';x.drawImage(S.baseCanvas,0,0,N,N);
+async function aiMask(){return aiMaskOf(S.baseCanvas,S.bw,S.bh)}
+// U²-Net mask (0…1 per pixel) of any picture: the builder's photo or the photos of the product in other colours
+async function aiMaskOf(src,bw,bh){
+  const N=320,c=mkCanvas(N,N),x=c.getContext('2d');x.imageSmoothingQuality='high';x.drawImage(src,0,0,N,N);
   const d=x.getImageData(0,0,N,N).data,mean=[.485,.456,.406],std=[.229,.224,.225],NN=N*N;
   const run=async flip=>{const inp=new Float32Array(3*NN);
     for(let y=0;y<N;y++)for(let xx=0;xx<N;xx++){const p=(y*N+(flip?N-1-xx:xx))*4,o=y*N+xx;for(let ch=0;ch<3;ch++)inp[ch*NN+o]=(d[p+ch]/255-mean[ch])/std[ch]}
@@ -1782,14 +1790,63 @@ if(SERVER){document.body.classList.add('srv');
     const on=new Set(String($('shopColors').value||'').split(',').filter(Boolean).map(Number));
     const cols=(PAL||p.color_list||[]).filter(c=>on.size?on.has(c.id):c.active!==false);
     if(!cols.length){box.className='status';box.innerHTML='Сначала добавь цвета в <a href="/admin#colors" target="_blank">админке → Товары → Цвета</a>.';return}
-    box.className='cph';
+    box.className='cph';$('cpTools').classList.remove('hide');
     box.innerHTML=cols.map(c=>{const ph=(p.media||[]).filter(m=>m.color_id===c.id),main=p.default_color===c.id;
       return`<div><div class="hd"><i style="${bgOf(c)}"></i>${escH(c.name)}</div><div class="ph">${main?`<img src="${escH(p.thumb)}" title="Главная карточка напечатана в этом цвете" alt="">`:''}${ph.map(m=>`<img src="${escH(m.thumb||m.url)}" alt="">`).join('')}
         <button type="button" data-cp="${c.id}" title="Добавить фото изделия в цвете «${escH(c.name)}»">＋</button></div>${ph.length||main?'':'<div class="no">ещё нет фото</div>'}</div>`}).join('')};
   $('shopColorPhotos').onclick=async e=>{const b=e.target.closest('[data-cp]');if(!b||!S.pub)return;const cid=+b.dataset.cp,c=(PAL||[]).find(x=>x.id===cid);
     if(!libOn()){smColor=cid;return $('smFile').click()}
     const fs=await libPick({kind:'image',multiple:true,title:'Фото изделия в цвете «'+(c?c.name:'')+'»'});if(fs&&fs.length&&fs!=='pc')smUpload(fs,cid)};
-  const smUpload=async(fs,colorId)=>{if(!fs.length||!S.pub)return;const fd=new FormData();fs.forEach(f=>fd.append('files',f,f.name));if(colorId)fd.append('color_id',colorId);
+  /* ---------- photos by colour: cut out the product and put it on the card's background ---------- */
+  const BGKEYS=['bgStyle','customBg','bgColor','deco'];
+  // a device setting, not part of the card: kept outside the card's state
+  const cpCut=document.querySelector('[data-cpcut]');try{cpCut.checked=localStorage.getItem('cpCut')!=='0'}catch(e){cpCut.checked=true}
+  cpCut.onchange=()=>{try{localStorage.setItem('cpCut',cpCut.checked?'1':'0')}catch(e){}};
+  // draw with the background of another card (its theme and background settings), then put everything back
+  function withBgOf(st,fn){if(!st)return fn();const keep={theme:S.theme};BGKEYS.forEach(k=>{const el=$(k);keep[k]=el.type==='checkbox'?el.checked:el.value});
+    try{if(st.theme)S.theme=st.theme;BGKEYS.forEach(k=>{if(k in st){const el=$(k);el.type==='checkbox'?el.checked=!!st[k]:el.value=st[k]}});return fn()}
+    finally{S.theme=keep.theme;BGKEYS.forEach(k=>{const el=$(k);el.type==='checkbox'?el.checked=keep[k]:el.value=keep[k]})}}
+  // → {cut: PNG without background, card: square JPEG of the product on the card background}
+  async function cutOnCard(blob,st){if(!await aiInit())throw new Error('Нейросеть не загрузилась, попробуй обновить страницу');
+    const img=await blobImg(blob),k=Math.min(1,1400/Math.max(img.width,img.height)),w=Math.round(img.width*k),h=Math.round(img.height*k);
+    const c=mkCanvas(w,h),x=c.getContext('2d',{willReadFrequently:true});x.drawImage(img,0,0,w,h);
+    const p=await aiMaskOf(c,w,h),id=x.getImageData(0,0,w,h),d=id.data,t=0.5+(+$('tolAdj').value/100)*0.38;
+    let x0=w,y0=h,x1=-1,y1=-1;
+    for(let i=0;i<w*h;i++){const v=(p[i]-t)*4.5+0.5,a=v<=0.03?0:v>=1?255:Math.round(v*255);d[i*4+3]=a;if(a>40){const xx=i%w,yy=(i/w)|0;if(xx<x0)x0=xx;if(xx>x1)x1=xx;if(yy<y0)y0=yy;if(yy>y1)y1=yy}}
+    if(x1<0)throw new Error('нейросеть не нашла изделие на фото');
+    x.putImageData(id,0,0);const cw=x1-x0+1,ch=y1-y0+1,cut=mkCanvas(cw,ch);cut.getContext('2d').drawImage(c,x0,y0,cw,ch,0,0,cw,ch);
+    const N=1200,u=N/1200,out=mkCanvas(N,N),o=out.getContext('2d');withBgOf(st,()=>drawBg(o,0,0,N,N,getTheme(),u));
+    const sc=Math.min(N*.8/cw,N*.8/ch),dw=cw*sc,dh=ch*sc;o.save();o.shadowColor='rgba(0,0,0,.22)';o.shadowBlur=46*u;o.shadowOffsetY=24*u;
+    o.drawImage(cut,(N-dw)/2,(N-dh)/2+N*.02,dw,dh);o.restore();
+    return{cut:await canvasBlob(cut),card:await new Promise(r=>out.toBlob(r,'image/jpeg',.9))}}
+  const nm=(f,suffix)=>(f.name||'фото').replace(/\.[a-z0-9]{2,5}$/i,'')+suffix;
+  // cut-outs go to the library next to the builder's own cut-outs
+  const toLib=async(blobs,names)=>{if(!window.Library||!blobs.length)return;try{await Library.upload(blobs.map((b,i)=>new File([b],names[i]+'.png',{type:'image/png'})),'Фото изделия без фона')}catch(e){console.warn('library',e)}};
+  async function prepColor(fs,colorId,st){const out=[],cuts=[],names=[],col=(PAL||[]).find(c=>c.id===colorId),title=$('title').value.trim()||'Изделие';
+    for(let i=0;i<fs.length;i++){const f=fs[i];if(!/^image\//.test(f.type)){out.push(f);continue}
+      $('cpSt').textContent=`🧠 Убираю фон ${i+1} из ${fs.length}…`;
+      try{const r=await cutOnCard(f,st);out.push(new File([r.card],nm(f,' (без фона).jpg'),{type:'image/jpeg'}));cuts.push(r.cut);names.push(`${title} — ${col?col.name:'цвет'}`)}
+      catch(e){out.push(f);$('cpSt').textContent='⚠️ '+f.name+': '+e.message}}
+    await toLib(cuts,names);$('cpSt').textContent='';return out}
+  // already uploaded photos: process each one and put it in place of the original
+  const done=m=>/\(без фона\)/.test(m.name||'');
+  async function fixProduct(pid,st,label){const p=await api('/api/shop/products/'+pid),todo=(p.media||[]).filter(m=>m.kind==='image'&&m.color_id&&!done(m));let n=0;
+    for(const m of todo){$('cpSt').textContent=`🧠 ${label}: фото ${++n} из ${todo.length}…`;
+      const r=await fetch(m.url,{credentials:'same-origin'});if(!r.ok)continue;const b=await r.blob();
+      let res;try{res=await cutOnCard(b,st)}catch(e){console.warn(m.url,e);continue}
+      const col=(PAL||[]).find(c=>c.id===m.color_id),fd=new FormData();fd.append('files',new File([res.card],nm(m,' (без фона).jpg'),{type:'image/jpeg'}));fd.append('color_id',m.color_id);
+      await api(`/api/admin/products/${pid}/media`,{method:'POST',form:fd});await api(`/api/admin/products/${pid}/media/${m.id}`,{method:'DELETE'});
+      await toLib([res.cut],[`${p.title} — ${col?col.name:'цвет'}`])}
+    return todo.length}
+  $('cpFixOne').onclick=async()=>{if(!S.pub)return;const b=$('cpFixOne');b.disabled=true;
+    try{const n=await fixProduct(S.pub.id,null,'этот товар');$('cpSt').textContent=n?'✓ Готово: '+n+' фото':'Все фото по цветам уже без фона';drawShopMedia()}catch(e){$('cpSt').textContent='⚠️ '+e.message}finally{b.disabled=false}};
+  $('cpFixAll').onclick=async()=>{if(!confirm('Убрать фон у фото по цветам во всех товарах и поставить фон их карточек? Это может занять несколько минут, не закрывай страницу.'))return;
+    const b=$('cpFixAll');b.disabled=true;let total=0;
+    try{const list=await api('/api/admin/products');
+      for(const p of list){let st=null;if(p.item_id){try{const rec=await dbGet('items',p.item_id);st=rec&&rec.state}catch(e){}}
+        total+=await fixProduct(p.id,st,'«'+p.title+'»')}
+      $('cpSt').textContent=total?'✓ Готово: '+total+' фото':'Все фото по цветам уже без фона';if(S.pub)drawShopMedia()}catch(e){$('cpSt').textContent='⚠️ '+e.message}finally{b.disabled=false}};
+  const smUpload=async(fs,colorId)=>{if(!fs.length||!S.pub)return;if(colorId&&cpCut.checked)fs=await prepColor(fs,colorId,null);const fd=new FormData();fs.forEach(f=>fd.append('files',f,f.name));if(colorId)fd.append('color_id',colorId);
     const st=$('smUp');if(st)st.textContent='⏳ Загружаю '+fs.length+'…';try{await api('/api/admin/products/'+S.pub.id+'/media',{method:'POST',form:fd});drawShopMedia()}catch(er){if(st)st.textContent='⚠️ '+er.message;else alert(er.message)}};
   $('smFile').addEventListener('change',e=>{const fs=[...e.target.files];e.target.value='';const c=smColor;smColor=null;smUpload(fs,c)});
   if(S.cardId)pubCheck()}
