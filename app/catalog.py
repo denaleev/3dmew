@@ -10,7 +10,7 @@ from email.utils import formataddr
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
 from .config import settings
@@ -476,6 +476,13 @@ def patch_feedback(fid: int, data: FeedbackPatch, db: Session = Depends(get_db),
     fb.done = data.done
     db.commit()
     return {"ok": True}
+
+
+@admin.delete("/feedback/{fid}", status_code=204)
+def delete_feedback(fid: int, db: Session = Depends(get_db), _: User = Depends(current_admin)):
+    db.execute(delete(Feedback).where(Feedback.id == fid))
+    db.commit()
+    return Response(status_code=204)
 
 
 # ---------------------------------------------------------------- favicon ----

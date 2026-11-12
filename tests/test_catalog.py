@@ -83,6 +83,10 @@ def test_colors_media_filters_and_feedback():
     assert g.post("/api/shop/feedback", json={"name": "Ира", "contact": "ira@ex.ru", "text": "Привет", "consent": True}).status_code == 200
     fb = a.get("/api/admin/feedback").json()
     assert fb["items"][0]["text"] == "Привет" and fb["email"] == "mew.shop@yandex.ru"
+    fid = fb["items"][0]["id"]
+    assert client().delete(f"/api/admin/feedback/{fid}").status_code == 401
+    assert a.delete(f"/api/admin/feedback/{fid}").status_code == 204
+    assert all(x["id"] != fid for x in a.get("/api/admin/feedback").json()["items"])
 
     # about text is editable and has a default (an empty value falls back to it)
     a.put("/api/admin/settings", json={"shop": {"about": ""}})

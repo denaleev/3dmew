@@ -15,7 +15,7 @@ from .config import settings
 from .db import get_db
 from .models import Cart, Favorite, FilamentColor, Product, Review, ReviewPhoto, User
 from .security import client_ip, current_admin, current_user, current_user_optional, is_admin, rate_limit
-from .shop import clean, jpeg, notify, published_product, stamp
+from .shop import clean, jpeg, notify, published_product, stamp, stats_since
 
 public = APIRouter(prefix="/api/shop")
 admin = APIRouter(prefix="/api/admin")
@@ -72,7 +72,9 @@ def save_cart(data: CartIn, request: Request, db: Session = Depends(get_db),
 
 @admin.get("/carts")
 def list_carts(days: int = 30, db: Session = Depends(get_db), _: User = Depends(current_admin)):
-    since = datetime.now(timezone.utc) - timedelta(days=max(1, min(days, 365)))
+    # «Сбросить статистику» also starts carts and «Отложенные» again: carts not touched since then are not counted
+    # (the carts themselves stay: the buyers still see them)
+    since = max(datetime.now(timezone.utc) - timedelta(days=max(1, min(days, 365))), stats_since(db))
     carts = list(db.execute(select(Cart).where(Cart.updated_at >= since).order_by(Cart.updated_at.desc())).scalars())
     pids = {i["id"] for c in carts for i in c.items or []}
     cids = {i.get("color") for c in carts for i in c.items or [] if i.get("color")}

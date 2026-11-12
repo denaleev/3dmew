@@ -23,6 +23,11 @@ def test_carts_favorites_reviews_and_order_delete():
     mine = next(c for c in carts["items"] if c["id"] == tok)
     assert mine["user"] is None and mine["items"][0]["qty"] == 2 and len(mine["items"]) == 1 and mine["total"] == 2580
     assert client().get("/api/admin/carts").status_code == 401
+    # «Сбросить статистику» starts the carts again; the cart itself stays for the buyer
+    assert a.post("/api/admin/stats/reset", json={"views": False}).status_code == 200
+    assert all(c["id"] != tok for c in a.get("/api/admin/carts").json()["items"])
+    assert g.put("/api/shop/cart", json={"token": tok, "items": [{"id": pid, "qty": 1}]}).status_code == 200
+    assert any(c["id"] == tok for c in a.get("/api/admin/carts").json()["items"])  # touched after the reset: counted
     g.put("/api/shop/cart", json={"token": tok, "items": []})
     assert all(c["id"] != tok for c in a.get("/api/admin/carts").json()["items"])
 
