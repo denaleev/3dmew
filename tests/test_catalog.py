@@ -204,6 +204,13 @@ def test_categories_color_price_and_stats_reset():
     assert d[cheap["id"]]["delta"] == 0 and d[plain["id"]]["delta"] == 0
     assert d[dear["id"]]["delta"] > 0 and d[dear["id"]]["delta"] % 10 == 0
     assert d[dear["id"]]["price"] == full["price"] + d[dear["id"]]["delta"]
+    # «от …» on the tile: the cheapest colour (a cheaper plastic makes the product cheaper)
+    eco = a.post("/api/admin/colors", data={"name": "Тест-эконом", "hex": "#cccccc", "kg_price": "900"}).json()
+    a.patch(f"/api/admin/products/{pid}", json={"colors": [cheap["id"], dear["id"], plain["id"], eco["id"]]})
+    low = {c["id"]: c for c in g.get(f"/api/shop/products/{pid}").json()["color_list"]}[eco["id"]]["price"]
+    tile = next(x for x in g.get("/api/shop/products").json()["items"] if x["id"] == pid)
+    assert low < full["price"] and tile["price_from"] == low and tile["price"] == full["price"]
+    a.patch(f"/api/admin/products/{pid}", json={"colors": [cheap["id"], dear["id"], plain["id"]]})
     base = {"consent": True, "terms": True, "name": "Оля", "phone": "1"}
     r = g.post("/api/shop/orders", json={**base, "items": [{"product_id": pid, "qty": 2, "color": dear["id"]}]})
     assert r.status_code == 200 and r.json()["total"] == 2 * d[dear["id"]]["price"]

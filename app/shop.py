@@ -403,9 +403,16 @@ def products(q: str = "", sort: str = Query("popular", pattern="^(popular|new|ch
             media.setdefault(m.product_id, []).append(m)
     from .social import ratings
     rt = ratings(db, [p.id for p in rows])
+    # «от …» on the tile: the cheapest colour the product can be ordered in
+    cs, amap = calc_settings(db), {c.id: c for c in active}
+
+    def price_from(p: Product) -> float:
+        base = float(p.price)
+        return min([base] + [max(base + color_delta(p, amap[i], cs)[0], 1.0) for i in eff.get(p.id, []) if i in amap])
     return {"items": [product_out(p, sold=sold.get(p.id, 0)) | {"material": product_material(p),
                                                                  "media": media_out(p.id, media.get(p.id, [])),
                                                                  "colors": eff.get(p.id, []),
+                                                                 "price_from": price_from(p),
                                                                  "default_color": p.default_color if p.default_color in eff.get(p.id, []) else None,
                                                                  "rating": rt.get(p.id, (0, 0))[0],
                                                                  "reviews": rt.get(p.id, (0, 0))[1]}

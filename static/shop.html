@@ -436,7 +436,7 @@ function drawGrid(g,list){
     <button class="fav ${isFav(p.id)?'on':''}" data-fav="${p.id}" aria-label="В избранное" title="В избранное">${isFav(p.id)?'♥':'♡'}</button></div>
     <div class="b"><div class="t">${esc(p.title)}</div>
     <div class="st"><span class="${p.stock>0?'ok':''}">${p.stock>0?'✓ В наличии: '+p.stock+' шт.':'🖨 Под заказ'}</span>${stars(p.rating,p.reviews)}${p.published?'':'<span class="hidl">🙈 скрыт</span>'}</div>
-    ${dots.length?`<div class="tdots" title="${esc(dots.map(c=>c.name).join(', '))}">${dots.slice(0,7).map(c=>`<i style="${swBg(c)}"></i>`).join('')}${dots.length>7?`<small>+${dots.length-7}</small>`:''}</div>`:''}<div><span class="price">${dots.length?'от ':''}${rub(p.price)}</span>${p.old_price?`<span class="old">${rub(p.old_price)}</span>`:''}</div>
+    ${dots.length?`<div class="tdots" title="${esc(dots.map(c=>c.name).join(', '))}">${dots.slice(0,7).map(c=>`<i style="${swBg(c)}"></i>`).join('')}${dots.length>7?`<small>+${dots.length-7}</small>`:''}</div>`:''}<div><span class="price">${dots.length?'от '+rub(p.price_from??p.price):rub(p.price)}</span>${p.old_price?`<span class="old">${rub(p.old_price)}</span>`:''}</div>
     <div data-buy="${p.id}" style="margin-top:auto">${buyHtml(p)}</div></div></article>`}).join('');
   S.tiles=S.tiles||{};list.forEach(p=>S.tiles[p.id]=p);
   g.querySelectorAll('[data-car]').forEach(car=>{const dd=car.parentNode.querySelectorAll('.cdots i');let cur=0;
