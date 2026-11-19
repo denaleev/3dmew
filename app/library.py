@@ -5,6 +5,7 @@ photos and cards from the card builder, neural-network cut-outs, product photos 
 pictures sent by customers with requests and reviews. Other parts of the admin (the card builder, colours,
 business cards and booklets, favicon) pick their pictures from this list."""
 import io
+import re
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -37,7 +38,7 @@ SOURCES = {
 MAX_FILES = 30
 # categories offered for uploaded files; the admin can type his own. A category is a filter in the library,
 # so «Фото пластика» shows uploaded spool photos next to the photos of colours.
-CATEGORIES = ["Фото пластика", "Фото изделий", "Логотипы", "Фоны и текстуры", "Видео", "Прочее"]
+CATEGORIES = ["Фото пластика", "Фото изделий", "Карточки без цены", "Логотипы", "Фоны и текстуры", "Видео", "Прочее"]
 
 
 def clean_cat(s: Optional[str]) -> str:
@@ -73,6 +74,9 @@ def library(user: User = Depends(current_admin), db: Session = Depends(get_db)):
         out.append(entry(f"up-{f.id}", "upload", f.kind, f.name, url, url + "/thumb" if f.has_thumb else None, f.size,
                          f.created_at, can_delete=True, mime=f.mime) | {"w": f.width, "h": f.height, "cat": f.category or ""})
 
+    # cards the builder saved into the library itself: the builder's own copy is not listed a second time
+    copied = {s[5:] for s in db.execute(select(LibraryFile.source).where(LibraryFile.source.like("card-%"))).scalars()
+              if not s.startswith("card-noprice-")}
     # finished cards saved in the builder's library
     mine: set[str] = set()
     rows = db.execute(select(Item.id, Item.title, Item.thumb, Item.updated_at, func.length(BlobSet.png).label("n"))
@@ -80,13 +84,15 @@ def library(user: User = Depends(current_admin), db: Session = Depends(get_db)):
                       .where(Item.user_id == user.id, Item.kind == "card", BlobSet.png.is_not(None))).all()
     for c in rows:
         mine.add(c.id)
+        if c.id in copied:
+            continue
         out.append(entry(f"card-{c.id}", "card", "image", c.title, f"/api/blobs/{c.id}/png", c.thumb, c.n, c.updated_at,
                          "конструктор карточек", can_delete=True, mime="image/png"))
     # cards in the shop (made by another admin or whose builder card was deleted)
     rows = db.execute(select(Product.id, Product.title, Product.item_id, Product.updated_at,
                              func.length(Product.image).label("n")).where(Product.image.is_not(None))).all()
     for p in rows:
-        if p.item_id in mine:
+        if p.item_id in mine or p.item_id in copied:
             continue
         out.append(entry(f"prod-{p.id}", "card", "image", p.title, f"/api/shop/products/{p.id}/image",
                          f"/api/shop/products/{p.id}/thumb", p.n, p.updated_at, "карточка товара в магазине"))
@@ -285,3 +291,35 @@ def set_category(body: CategoryIn, db: Session = Depends(get_db), _: User = Depe
         db.execute(update(LibraryFile).where(LibraryFile.id.in_(ids)).values(category=cat))
         db.commit()
     return {"updated": len(ids), "skipped": len(body.keys) - len(ids), "category": cat}
+
+
+SOURCE = re.compile(r"^[A-Za-z0-9_-]{1,80}$")
+
+
+@router.put("/source/{source}")
+async def put_source(source: str, file: UploadFile = File(...), name: str = Form(""), category: str = Form(""),
+                     user: User = Depends(current_admin), db: Session = Depends(get_db)):
+    """Save a picture the site keeps up to date (the card builder's card and its version without the price):
+    the same source replaces the old file instead of adding a copy."""
+    if not SOURCE.fullmatch(source):
+        raise HTTPException(400, "Неверный ключ")
+    data = await file.read()
+    if len(data) > settings.MAX_UPLOAD_MB * 1024 * 1024:
+        raise HTTPException(413, f"Файл больше {settings.MAX_UPLOAD_MB} МБ")
+    try:
+        thumb, w, h = picture(data)
+        fmt = Image.open(io.BytesIO(data)).format or "PNG"
+    except (UnidentifiedImageError, OSError):
+        raise HTTPException(400, "Не получилось открыть картинку")
+    f = db.execute(select(LibraryFile).where(LibraryFile.source == source)).scalar_one_or_none()
+    if f is None:
+        f = LibraryFile(user_id=user.id, kind="image", source=source, category=clean_cat(category))
+        db.add(f)
+    f.mime = Image.MIME.get(fmt, "image/png")
+    f.name = clean(name, 300) or f.name or "Карточка"
+    f.data, f.thumb, f.size, f.width, f.height = data, thumb, len(data), w, h
+    f.created_at = func.now()  # an updated card moves up in the library
+    if category and not f.category:
+        f.category = clean_cat(category)
+    db.commit()
+    return upload_out(f)

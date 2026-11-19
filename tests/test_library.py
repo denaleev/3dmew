@@ -139,3 +139,24 @@ def test_scripts_are_revalidated():
     """The library script must not stay in the browser's cache after a release."""
     r = TestClient(app).get("/js/library.js")
     assert r.status_code == 200 and r.headers["cache-control"] == "no-cache"
+
+
+def test_builder_keeps_card_copies_up_to_date():
+    a = user_client(admin=True)
+    src = "k" + uuid.uuid4().hex[:10]
+    a.put(f"/api/items/{src}", json={"kind": "card", "title": "Кот", "thumb": "data:image/jpeg;base64,AA", "t": 1})
+    a.put(f"/api/blobs/{src}", files={"png": ("card.png", png(), "image/png")})
+    assert f"card-{src}" in keys(a)  # the builder's card is listed until the library has its own copy
+    for size in [(40, 30), (60, 50)]:  # saved twice: the copy is replaced, not added
+        r = a.put(f"/api/admin/library/source/card-{src}", data={"name": "Кот", "category": "Карточки"},
+                  files={"file": ("c.png", png(size), "image/png")})
+        assert r.status_code == 200, r.text
+        r2 = a.put(f"/api/admin/library/source/card-noprice-{src}", data={"name": "Кот (без цены)", "category": "Карточки без цены"},
+                   files={"file": ("c.png", png(size), "image/png")})
+        assert r2.status_code == 200
+    lib = a.get("/api/admin/library").json()["items"]
+    mine = [e for e in lib if e["name"].startswith("Кот") and e["src"] == "upload" and e["key"] in (r.json()["key"], r2.json()["key"])]
+    assert len(mine) == 2 and {e["cat"] for e in mine} == {"Карточки", "Карточки без цены"}
+    assert all(e["w"] == 60 for e in mine)
+    assert f"card-{src}" not in {e["key"] for e in lib}  # no second copy of the same card
+    assert a.put("/api/admin/library/source/bad key!", files={"file": ("c.png", png(), "image/png")}).status_code in (400, 404)

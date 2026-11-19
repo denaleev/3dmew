@@ -1205,8 +1205,18 @@ function readT(){
   const feats=$('feats').value.split('\n').map(s=>s.trim()).filter(Boolean).slice(0,5).map(l=>{const i=l.indexOf(':');return i>0?{k:l.slice(0,i).trim(),v:l.slice(i+1).trim()}:{k:'',v:l}});
   const t={title:$('title').value.trim(),desc:$('desc').value.trim(),price:money(price),old:disc?money(old):'',disc,rating:num($('rating').value),reviews:$('reviews').value.trim(),badges,feats};
   // preview for the shop catalogue: only the name, the product and its details (the price is shown under the picture)
+  if(S.noPrice)return{...t,price:'',old:'',disc:0};  // the same card without the price plate (for the library)
   return S.tileMode?{...t,desc:'',price:'',old:'',disc:0,rating:NaN,reviews:'',badges:[]}:t;
 }
+async function noPriceBlob(){S.noPrice=true;try{renderCard();return await canvasBlob($('card'))}finally{S.noPrice=false;renderCard()}}
+// the shop admin's cards also go to the shop's library: the card and the card without the price plate.
+// Saving the card again replaces both pictures there instead of adding copies.
+async function saveLibCards(id,title,png){if(typeof SERVER==='undefined'||!SERVER||!S.user||!S.user.admin)return;
+  const put=async(src,blob,name,cat)=>{const fd=new FormData();fd.append('file',new File([blob],'card.png',{type:'image/png'}));fd.append('name',name);fd.append('category',cat);
+    await api('/api/admin/library/source/'+src,{method:'PUT',form:fd})};
+  try{await put('card-'+id,png,title,'Карточки');
+    if(!S.fixed)await put('card-noprice-'+id,await noPriceBlob(),title+' (без цены)','Карточки без цены')}
+  catch(e){console.warn('library',e);saveState('✓ Сохранено, но в библиотеку магазина не попало: '+e.message)}}
 async function tileBlob(){S.tileMode=true;try{renderCard();return await canvasBlob($('card'))}finally{S.tileMode=false;renderCard()}}
 function drawBadges(x,X,Y,maxW,d,T,u){let cx=X,cy=Y;const h=50*u;
   d.badges.forEach((b,i)=>{font(x,800,23*u);const w=x.measureText(b).width+h*.9;if(cx+w>X+maxW&&cx>X){cx=X;cy+=h+12*u}
@@ -1601,7 +1611,7 @@ async function saveCard0(kind){
     const rec={id,user:S.user.id,kind,title:$('title').value.trim()||'Без названия',thumb:thumbOf(cv,360),state:captureState(),t:Date.now()};
     const blobs={id,png:S.fixed&&S.fixedBlob?S.fixedBlob:await canvasBlob(cv),photo:S.photoBlob||null,product:S.product?await canvasBlob(S.product):null,productCut:!!S.productCut,manual:S.manual&&S.manual.some(v=>v)?new Blob([S.manual]):null};
     await dbPut('blobs',blobs);await dbPut('items',rec);
-    if(kind==='card'){S.cardId=id;window.filesRefresh&&filesRefresh();saveCutout(id,rec.title,blobs.product);if(S.draftId){await dbDel('items',S.draftId);await dbDel('blobs',S.draftId);S.draftId=null}S.dirty=false;saveState('✓ Сохранено в библиотеку '+fmtDate(rec.t));}
+    if(kind==='card'){S.cardId=id;window.filesRefresh&&filesRefresh();saveCutout(id,rec.title,blobs.product);await saveLibCards(id,rec.title,blobs.png);if(S.draftId){await dbDel('items',S.draftId);await dbDel('blobs',S.draftId);S.draftId=null}S.dirty=false;saveState('✓ Сохранено в библиотеку '+fmtDate(rec.t));}
     else{S.draftId=id;saveState('📝 Черновик сохранён '+new Date(rec.t).toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'}))}
   }catch(e){saveState('⚠️ Не сохранилось: '+e.message)}finally{saving=false}}
 $('saveLib').onclick=()=>saveCard('card');
