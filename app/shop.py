@@ -178,7 +178,7 @@ def product_out(p: Product, full: bool = False, sold: int | None = None) -> dict
     if sold is not None:
         o["sold"] = sold
     if full:
-        o.update(description=p.description, note=p.note or "", features=[
+        o.update(description=p.description, note=p.note or "", min_price=f(p.min_price), features=[
             {"k": a.strip(), "v": b.strip()} for a, _, b in (ln.partition(":") for ln in p.features.splitlines()) if a.strip()
         ])
     return o
@@ -289,6 +289,12 @@ def color_delta(p: Product, c: FilamentColor | None, cs: dict) -> tuple[int, flo
     dprice = dcost * (1 + cs["markup_pct"] / 100) / (1 - fees)
     step = 10 if abs(dprice) >= 10 else 1
     return int(round(dprice / step) * step), round(dcost, 2)
+
+
+def color_price(p: Product, dprice: float | int) -> Decimal:
+    """The price of the product in a colour: base price plus the plastic difference, never below the product's
+    lowest price («Минимальная цена» in the card builder) and never below 1 ₽."""
+    return max(Decimal(str(p.price)) + Decimal(str(dprice)), Decimal(str(p.min_price or 0)), Decimal(1))
 
 
 def active_colors(db: Session) -> list[FilamentColor]:
@@ -408,7 +414,7 @@ def products(q: str = "", sort: str = Query("popular", pattern="^(popular|new|ch
 
     def price_from(p: Product) -> float:
         base = float(p.price)
-        return min([base] + [max(base + color_delta(p, amap[i], cs)[0], 1.0) for i in eff.get(p.id, []) if i in amap])
+        return min([float(color_price(p, 0))] + [float(color_price(p, color_delta(p, amap[i], cs)[0])) for i in eff.get(p.id, []) if i in amap])
     return {"items": [product_out(p, sold=sold.get(p.id, 0)) | {"material": product_material(p),
                                                                  "media": media_out(p.id, media.get(p.id, [])),
                                                                  "colors": eff.get(p.id, []),
@@ -456,7 +462,8 @@ def product(pid: int, db: Session = Depends(get_db), user: User | None = Depends
     cols = []
     for c, mark in ordered_colors(p, allowed_colors(p, active_colors(db)), color_popularity(db)):
         d, _ = color_delta(p, c, cs)
-        cols.append(color_out(c) | {"delta": d, "price": max(float(p.price) + d, 1.0), "mark": mark})
+        price = float(color_price(p, d))
+        cols.append(color_out(c) | {"delta": round(price - float(p.price)), "price": price, "mark": mark})
     out = product_out(p, full=True, sold=sold_counts(db).get(p.id, 0)) | {
         "media": media_out(p.id, media), "color_list": cols, "material": product_material(p),
         "priced_colors": bool(p.grams)}  # weight known: the colour surcharge can be counted
@@ -571,7 +578,7 @@ def create_order(data: OrderIn, request: Request, db: Session = Depends(get_db),
             dprice, dcost = max((color_delta(p, x, cs) for x in multi), key=lambda d: d[0])
         else:
             dprice, dcost = color_delta(p, c, cs)
-        price = max(p.price + Decimal(dprice), Decimal(1))
+        price = color_price(p, dprice)
         unit_cost = (p.cost or 0) + Decimal(str(dcost))
         from_stock = 0 if multi else min(p.stock or 0, line.qty)  # a multicolour piece is always printed
         p.stock = (p.stock or 0) - from_stock
