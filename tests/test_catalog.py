@@ -210,6 +210,18 @@ def test_categories_color_price_and_stats_reset():
     low = {c["id"]: c for c in g.get(f"/api/shop/products/{pid}").json()["color_list"]}[eco["id"]]["price"]
     tile = next(x for x in g.get("/api/shop/products").json()["items"] if x["id"] == pid)
     assert low < full["price"] and tile["price_from"] == low and tile["price"] == full["price"]
+    # «Минимальная цена»: no plastic makes the product cheaper than that
+    floor = low + 50
+    assert a.patch(f"/api/admin/products/{pid}", json={"min_price": floor}).status_code == 200
+    d2 = {c["id"]: c for c in g.get(f"/api/shop/products/{pid}").json()["color_list"]}
+    assert d2[eco["id"]]["price"] == floor and d2[eco["id"]]["delta"] == floor - full["price"]
+    assert d2[dear["id"]]["price"] == d[dear["id"]]["price"]  # dearer colours are not touched
+    assert next(x for x in g.get("/api/shop/products").json()["items"] if x["id"] == pid)["price_from"] == floor
+    r = g.post("/api/shop/orders", json={"consent": True, "terms": True, "name": "Оля", "phone": "1",
+                                          "items": [{"product_id": pid, "qty": 1, "color": eco["id"]}]})
+    assert r.status_code == 200 and r.json()["total"] == floor
+    assert a.patch(f"/api/admin/products/{pid}", json={"min_price": 0}).status_code == 200  # 0: no floor
+    assert a.get(f"/api/shop/products/{pid}").json()["min_price"] is None
     a.patch(f"/api/admin/products/{pid}", json={"colors": [cheap["id"], dear["id"], plain["id"]]})
     base = {"consent": True, "terms": True, "name": "Оля", "phone": "1"}
     r = g.post("/api/shop/orders", json={**base, "items": [{"product_id": pid, "qty": 2, "color": dear["id"]}]})

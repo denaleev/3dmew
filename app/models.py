@@ -123,6 +123,8 @@ class Product(Base):
     category: Mapped[str] = mapped_column(String(80), default="")
     price: Mapped[float] = mapped_column(Numeric(12, 2))
     old_price: Mapped[Optional[float]] = mapped_column(Numeric(12, 2))
+    # the price never goes below this, whatever plastic the buyer picks (empty: no floor)
+    min_price: Mapped[Optional[float]] = mapped_column(Numeric(12, 2))
     cost: Mapped[Optional[float]] = mapped_column(Numeric(12, 2))  # cost price from the calculator
     calc: Mapped[Optional[dict]] = mapped_column(JSONB)  # calculator inputs and breakdown
     print_minutes: Mapped[int] = mapped_column(Integer, default=0)  # printer time for one piece

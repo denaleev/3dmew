@@ -257,6 +257,7 @@ body:not(.srv) .srv-only,body:not(.adm) .adm-only{display:none!important}
       <label class="f"><span>Цена, ₽</span><input type="text" id="price" inputmode="decimal" value="790"></label>
       <label class="f"><span>Старая цена, ₽</span><input type="text" id="old" inputmode="decimal" value="1190" placeholder="можно пусто"></label>
     </div>
+    <label class="f"><span>Минимальная цена, ₽ <small style="font-weight:500;opacity:.75">ниже неё цена не опустится при любом пластике</small></span><input type="text" id="minPrice" inputmode="decimal" placeholder="можно пусто"></label>
     <details id="calcBox">
       <summary>🧮 Калькулятор цены: пластик, время печати, расходы</summary>
       <label class="f"><span>Пластик и цвет <small style="font-weight:600;opacity:.7">(тип и цена за кг задаются в <a href="/admin#colors" target="_blank">админке → Товары → Цвета</a>; этот цвет станет стандартным в карточке)</small></span>
@@ -1633,7 +1634,7 @@ $('card').addEventListener('pointerup',()=>{S.dirty=true});
 setInterval(()=>{if(S.user&&S.dirty&&!saving&&(S.product||S.baseData)&&!/%|…/.test($('work').textContent)){S.dirty=false;saveCard('draft')}},8000);
 $('newCard').onclick=async()=>{if(S.user&&S.dirty&&(S.product||S.baseData))await saveCard('draft');fixedOff();
   S.cardId=null;S.draftId=null;window.filesRefresh&&setTimeout(filesRefresh);S.product=null;S.baseData=null;S.mask=null;S.photoBlob=null;S.photoSaved=false;S.dirty=false;S.needProc=false;S.chipOff={x:0,y:0};
-  drop.classList.remove('has');$('dropTitle').textContent='Загрузи фото изделия';['title','desc','price','old','calcGrams','calcH','calcM','calcFinish','calcExtra','calcMarkup','shopCat','shopColors','shopNote','calcMat','calcKg','calcColor'].forEach(i=>$(i).value='');window.calcPickSync&&calcPickSync();S.stateHasColors=false;window.pubCheck&&setTimeout(pubCheck);$('calcN').value=1;window.calcUpdate&&calcUpdate();S.depth=null;S.guess=null;showGuesses([]);PT.sel=false;$('thumbInfo').textContent='';
+  drop.classList.remove('has');$('dropTitle').textContent='Загрузи фото изделия';['title','desc','price','old','minPrice','calcGrams','calcH','calcM','calcFinish','calcExtra','calcMarkup','shopCat','shopColors','shopNote','calcMat','calcKg','calcColor'].forEach(i=>$(i).value='');window.calcPickSync&&calcPickSync();S.stateHasColors=false;window.pubCheck&&setTimeout(pubCheck);$('calcN').value=1;window.calcUpdate&&calcUpdate();S.depth=null;S.guess=null;showGuesses([]);PT.sel=false;$('thumbInfo').textContent='';
   ['pDx','pDy','pRot','p3Y','p3P'].forEach(i=>$(i).value=0);$('pScale').value=100;$('pFlip').checked=false;updLabels();setWork('');saveState('Новая карточка');renderCard();goTab('photo')};
 
 /* cabinet */

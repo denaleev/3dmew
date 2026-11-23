@@ -20,7 +20,7 @@ from .models import (ORDER_STATUSES, REQUEST_STATUSES, BlobSet, CustomRequest, F
                      ShopSetting, User)
 from .security import current_admin
 from .store import list_item_files
-from .shop import (DELIVERY, ORDER_LABELS, REQUEST_LABELS, SHOP_DEFAULTS, LONG_TEXT, PAGE_TEXT, add_event, calc_settings, clean, f,
+from .shop import (DELIVERY, ORDER_LABELS, REQUEST_LABELS, SHOP_DEFAULTS, LONG_TEXT, PAGE_TEXT, add_event, calc_settings, clean, color_price, f,
                    get_setting, jpeg, load_order, load_request, order_events, order_lines, order_out, product_out,
                    request_events, request_files, request_out, return_stock, shop_info, sold_counts, stamp, tile_from_card,
                    stats_since)
@@ -110,6 +110,9 @@ def publish_card(item_id: str, db: Session = Depends(get_db), admin: User = Depe
     p.price = Decimal(str(round(price, 2)))
     old = num(st.get("old"))
     p.old_price = Decimal(str(round(old, 2))) if old > price else None
+    if "minPrice" in st:  # «Минимальная цена»: with any plastic the product is not cheaper than this
+        mp = num(st.get("minPrice"))
+        p.min_price = Decimal(str(round(mp, 2))) if mp > 0 else None
     cin = state_calc(st)
     if cin["grams"] or cin["hours"] or cin["minutes"]:
         res = pricing.calc(cin, get_setting(db, "calc"))
@@ -172,6 +175,7 @@ class ProductPatch(BaseModel):
     category: Optional[str] = Field(default=None, max_length=80)
     price: Optional[float] = Field(default=None, gt=0)
     old_price: Optional[float] = Field(default=None, ge=0)
+    min_price: Optional[float] = Field(default=None, ge=0)
     stock: Optional[int] = Field(default=None, ge=0, le=100000)
     published: Optional[bool] = None
     sort: Optional[int] = Field(default=None, ge=-100000, le=100000)
@@ -188,7 +192,7 @@ def patch_product(pid: int, data: ProductPatch, db: Session = Depends(get_db), _
     if not p:
         raise HTTPException(404, "Товар не найден")
     for k, v in data.model_dump(exclude_unset=True).items():
-        if k in ("price", "old_price") and v is not None:
+        if k in ("price", "old_price", "min_price") and v is not None:
             v = Decimal(str(round(v, 2))) if v > 0 else None
         if k in ("title", "description", "category", "features", "note") and v is not None:
             v = v.strip()
@@ -681,7 +685,7 @@ def create_admin_order(data: AdminOrderIn, db: Session = Depends(get_db), admin:
                 raise HTTPException(400, "Товар не найден")
             c = next((x for x in allowed_colors(p, active) if x.id == ln.color), None)
             dprice, dcost = color_delta(p, c, cs)
-            price = Decimal(str(round(ln.price, 2))) if ln.price is not None else max(p.price + Decimal(dprice), Decimal(1))
+            price = Decimal(str(round(ln.price, 2))) if ln.price is not None else color_price(p, dprice)
             unit_cost = (p.cost or 0) + Decimal(str(dcost))
             from_stock = min(p.stock or 0, ln.qty) if data.take_stock else 0
             p.stock = (p.stock or 0) - from_stock
